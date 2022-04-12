@@ -1,0 +1,11 @@
+executable            = /afs/cern.ch/work/d/dannc/public/muonback_sim_offset.sh
+arguments             = $(ClusterID) $(ProcId)
+output                = output/muonback_sim.$(ClusterId).$(ProcId).out
+error                 = error/muonback_sim.$(ClusterId).$(ProcId).err
+log                   = log/muonback_sim.$(ClusterId).log
+getenv = False
+notification = Never
+RequestCpus = 5
+should_transfer_files = YES
++JobFlavour             ="testmatch"
+queue 1000
