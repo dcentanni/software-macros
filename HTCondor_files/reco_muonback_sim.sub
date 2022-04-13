@@ -1,0 +1,11 @@
+executable            = /afs/cern.ch/work/d/dannc/public/reco_muonback_sim.sh
+arguments             = $(ClusterID) $(ProcId)
+output                = output/recomuonback_sim.$(ClusterId).$(ProcId).out
+error                 = error/recomuonback_sim.$(ClusterId).$(ProcId).err
+log                   = log/recomuonback_sim.$(ClusterId).log
+getenv = False
+notification = Never
+RequestCpus = 5
+should_transfer_files = YES
++JobFlavour             ="testmatch"
+queue 1

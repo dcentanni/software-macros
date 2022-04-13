@@ -1,0 +1,13 @@
+executable            = /afs/cern.ch/work/d/dannc/public/root_condor.sh
+arguments             = $(ProcId) $(ClusterId) 
+output                = output/condor.background.$(ClusterId).$(ProcId).out
+error                 = error/condor.background.$(ClusterId).$(ProcId).err
+log                   = log/condor.background.$(ClusterId).log
+getenv = false
+notification = Always
+notify_user = daniele.centanni@cern.ch
+RequestCpus = 5
+should_transfer_files = YES
++JobFlavour             ="testmatch"
+queue 
+
