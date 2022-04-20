@@ -38,6 +38,8 @@ timer.Start()
 # outfile should be in local directory
 tmp     = options.inputFile.split('/')
 outFile = tmp[len(tmp)-1].replace('.root','_dig.root')
+#Adding inputFile path to outFile
+outFile = os.path.dirname(os.path.abspath(options.inputFile))+'/'+outFile
 if options.inputFile.find('/eos')==0:
    if options.FairTask_digi:
        options.inputFile = os.environ['EOSSHIP']+options.inputFile
@@ -54,10 +56,9 @@ else:
 import shipLHC_conf as sndDet_conf
 
 if options.geoFile.find('/eos')==0:
-    if options.geoFile.find('/eos/u')==0:
-        os.system('cp '+options.geoFile+' '+options.geoFile)
-    else:
-       options.geoFile = os.environ['EOSSHIP']+options.geoFile
+    if os.path.isfile(os.environ['EOSSHIP']+options.geoFile):
+      options.geoFile = os.environ['EOSSHIP']+options.geoFile
+    
 import SndlhcGeo
 snd_geo = SndlhcGeo.GeoInterface(options.geoFile)
 
