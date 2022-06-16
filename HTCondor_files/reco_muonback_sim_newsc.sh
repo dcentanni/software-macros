@@ -26,4 +26,3 @@ STARTEVENT=$((FAILEDPROCID*NEVENTS))
 LSB_JOBINDEX=$((FAILEDPROCID+1))
 echo "Starting script, from event" $STARTEVENT
 /cvmfs/sndlhc.cern.ch/SNDLHC-2022/March10/sw/slc7_x86-64/Python/v3.6.8-local1/bin/python3 $SNDLHC_mymaster/sndsw/shipLHC/run_simSND.py --Ntuple -f $INPUTFILES -i $STARTEVENT -n $NEVENTS -o $OUTPUTDIR/$FAILEDCLUSID/$LSB_JOBINDEX
-done
