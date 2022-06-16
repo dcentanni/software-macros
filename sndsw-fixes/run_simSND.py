@@ -226,7 +226,7 @@ if simEngine == "Ntuple":
    Ntuplegen.Init(inputFile,options.firstEvent)
    primGen.AddGenerator(Ntuplegen)
    options.nEvents = min(options.nEvents,Ntuplegen.GetNevents())
-   lastEvts = DISgen.GetNevents()-options.firstEvent
+   lastEvts = Ntuplegen.GetNevents()-options.firstEvent
    if options.nEvents >= lastEvts:
       options.nEvents = lastEvts
 if simEngine == "MuonBack":
