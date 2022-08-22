@@ -1,0 +1,11 @@
+executable            = /afs/cern.ch/work/d/dannc/public/reco_digipassingmu.sh
+arguments             = $(ClusterID) $(ProcId)
+output                = output/recodigimu.$(ClusterId).$(ProcId).out
+error                 = error/recodigimu.$(ClusterId).$(ProcId).err
+log                   = log/recodigimu.$(ClusterId).log
+getenv = False
+notification = Never
+RequestCpus = 5
+should_transfer_files = YES
++JobFlavour             ="testmatch"
+queue 1

@@ -1,0 +1,11 @@
+executable            = /afs/cern.ch/work/d/dannc/public/digipassingmu_sim.sh
+arguments             = $(ClusterID) $(ProcId)
+output                = output/digimu.$(ClusterId).$(ProcId).out
+error                 = error/digimu.$(ClusterId).$(ProcId).err
+log                   = log/digimu.$(ClusterId).log
+getenv = False
+notification = Never
+RequestCpus = 5
+should_transfer_files = YES
++JobFlavour             ="testmatch"
+queue 100

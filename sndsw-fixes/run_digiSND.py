@@ -13,7 +13,7 @@ def mem_monitor():
     pmsize = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
     print("memory: virtuell = %5.2F MB  physical = %5.2F MB"%(vmsize/1.0E3,pmsize/1.0E3))
 
-import ROOT,os,sys,getopt
+import ROOT,os,sys
 import shipRoot_conf
 import shipunit as u
 
@@ -58,7 +58,6 @@ import shipLHC_conf as sndDet_conf
 if options.geoFile.find('/eos')==0:
     if os.path.isfile(os.environ['EOSSHIP']+options.geoFile):
       options.geoFile = os.environ['EOSSHIP']+options.geoFile
-    
 import SndlhcGeo
 snd_geo = SndlhcGeo.GeoInterface(options.geoFile)
 
@@ -75,7 +74,7 @@ mufiDet.SetConfPar("MuFilter/VandUpSiPMcalibrationS",25.*1000.);
 mufiDet.SetConfPar("MuFilter/VandUpPropSpeed",12.5*u.cm/u.nanosecond);
 mufiDet.SetConfPar("MuFilter/DsPropSpeed",14.3*u.cm/u.nanosecond);
 scifiDet.SetConfPar("Scifi/nphe_min",3.5)   # threshold
-scifiDet.SetConfPar("Scifi/nphe_max ",104) # saturation
+scifiDet.SetConfPar("Scifi/nphe_max",104.) # saturation
 scifiDet.SetConfPar("Scifi/timeResol",150.*u.picosecond) # time resolution in ps
 scifiDet.SetConfPar("MuFilter/timeResol",150.*u.picosecond) # time resolution in ps, first guess
 

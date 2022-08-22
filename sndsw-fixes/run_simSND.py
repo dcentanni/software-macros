@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import os
 import sys
-import getopt
 import ROOT
 
 import shipunit as u
@@ -22,7 +21,7 @@ parser = ArgumentParser()
 group = parser.add_mutually_exclusive_group()
 
 parser.add_argument("--H6",   dest="testbeam",   help="use geometry of H8/H6 testbeam setup", required=False, default = 0, type = int)
-parser.add_argument("--Genie",   dest="genie",   help="Genie for reading and processing neutrino interactions (1 standard, 2 FLUKA, 3 Pythia)", required=False, default = 0, type = int)
+parser.add_argument("--Genie",   dest="genie",   help="Genie for reading and processing neutrino interactions (1 standard, 2 FLUKA, 3 Pythia, 4 GENIE geometry driver)", required=False, default = 0, type = int)
 parser.add_argument("--Ntuple",  dest="ntuple",  help="Use ntuple as input", required=False, action="store_true")
 parser.add_argument("--MuonBack",dest="muonback",  help="Generate events from muon background file, --Cosmics=0 for cosmic generator data", required=False, action="store_true")
 parser.add_argument("--Pythia8", dest="pythia8", help="Use Pythia8", required=False, action="store_true")
@@ -113,12 +112,6 @@ if not os.path.exists(options.outputDir):
   os.makedirs(options.outputDir)
 if options.boostFactor>1:
    tag+='_boost'+str(options.boostFactor)
-#Custom made for DIS (dcentann)
-if simEngine == "muonDIS":
-    inSplitted = options.inputFile.split('/')
-    fname = inSplitted[7].split('.')
-    tag = simEngine+"-"+mcEngine+"-"+fname[0]
-#
 outFile = "%s/sndLHC.%s.root" % (options.outputDir, tag)
 
 # rm older files !!! 
@@ -166,7 +159,7 @@ if simEngine == "muonDIS":
    ut.checkFileExists(inputFile)
    primGen.SetTarget(0., 0.) 
    DISgen = ROOT.MuDISGenerator()
-   mu_start, mu_end = (-2.2)*u.m , 5.8*u.m # tunnel wall -30cm in front of SND
+   mu_start, mu_end = (-3.7-2.0)*u.m , -0.3*u.m # tunnel wall -30cm in front of SND
    DISgen.SetPositions(0, mu_start, mu_end)
    if options.ecut > 0:  
             modules['Floor'].SetEmin(options.ecut)
@@ -174,9 +167,6 @@ if simEngine == "muonDIS":
    DISgen.Init(inputFile,options.firstEvent) 
    primGen.AddGenerator(DISgen)
    options.nEvents = min(options.nEvents,DISgen.GetNevents())
-   lastEvts = DISgen.GetNevents()-options.firstEvent
-   if options.nEvents >= lastEvts:
-      options.nEvents = lastEvts
    inactivateMuonProcesses = True # avoid unwanted hadronic events of "incoming" muon flying backward
    print('MuDIS position info input=',mu_start, mu_end)
    print('Generate ',options.nEvents,' with DIS input', ' first event',options.firstEvent)
@@ -328,6 +318,29 @@ run.CreateGeometryFile(geoFile)
 # save detector parameters dictionary in geofile
 import saveBasicParameters
 saveBasicParameters.execute(geoFile,snd_geo)
+
+# ------------------------------------------------------------------------
+# If using GENIE option 4 (geometry driver) copy GST TTree to the 
+# output file. This will make it easy to access the FLUKA variables for
+# each neutrino event.
+if options.genie == 4 :
+
+    f_input = ROOT.TFile(inputFile)
+    gst = f_input.gst
+
+    selection_string = "(Entry$ >= "+str(options.firstEvent)+")"
+    if (options.firstEvent + options.nEvents) < gst.GetEntries() :
+        selection_string += "&&(Entry$ < "+str(options.firstEvent + options.nEvents)+")"
+    
+    # Reopen output file
+    f_output = ROOT.TFile(outFile, "UPDATE")
+
+    # Copy only the events used in this run
+    gst_copy = gst.CopyTree(selection_string)
+    gst_copy.Write()
+
+    f_input.Close()
+    f_output.Close()
 
 # -----Finish-------------------------------------------------------
 timer.Stop()
