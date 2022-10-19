@@ -112,6 +112,12 @@ if not os.path.exists(options.outputDir):
   os.makedirs(options.outputDir)
 if options.boostFactor>1:
    tag+='_boost'+str(options.boostFactor)
+#Custom made for DIS (dcentann)
+if simEngine == "muonDIS":
+   inSplitted = options.inputFile.split('/')
+   fname = inSplitted[7].split('.')
+   tag = simEngine+"-"+mcEngine+"-"+fname[0]
+ #####
 outFile = "%s/sndLHC.%s.root" % (options.outputDir, tag)
 
 # rm older files !!! 
@@ -159,7 +165,7 @@ if simEngine == "muonDIS":
    ut.checkFileExists(inputFile)
    primGen.SetTarget(0., 0.) 
    DISgen = ROOT.MuDISGenerator()
-   mu_start, mu_end = (-3.7-2.0)*u.m , -0.3*u.m # tunnel wall -30cm in front of SND
+   mu_start, mu_end = (-2.2)*u.m , 5.8*u.m # tunnel wall -30cm in front of SND
    DISgen.SetPositions(0, mu_start, mu_end)
    if options.ecut > 0:  
             modules['Floor'].SetEmin(options.ecut)
@@ -216,9 +222,7 @@ if simEngine == "Ntuple":
    Ntuplegen.Init(inputFile,options.firstEvent)
    primGen.AddGenerator(Ntuplegen)
    options.nEvents = min(options.nEvents,Ntuplegen.GetNevents())
-   lastEvts = Ntuplegen.GetNevents()-options.firstEvent
-   if options.nEvents >= lastEvts:
-      options.nEvents = lastEvts
+
 if simEngine == "MuonBack":
 # reading muon tracks from FLUKA
  fileType = ut.checkFileExists(inputFile)
@@ -293,7 +297,7 @@ if inactivateMuonProcesses :
  mygMC = ROOT.TGeant4.GetMC()
  mygMC.ProcessGeantCommand("/process/inactivate muPairProd")
  mygMC.ProcessGeantCommand("/process/inactivate muBrems")
- mygMC.ProcessGeantCommand("/process/inactivate muIoni")
+ #mygMC.ProcessGeantCommand("/process/inactivate muIoni")
  mygMC.ProcessGeantCommand("/process/inactivate muonNuclear")
  mygMC.ProcessGeantCommand("/particle/select mu+")
  mygMC.ProcessGeantCommand("/particle/process/dump")
