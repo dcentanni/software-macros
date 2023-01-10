@@ -1,0 +1,32 @@
+executable            = /afs/cern.ch/work/d/dannc/public/MuonBackground/makeDigiPassingMu.sh
+output                = /afs/cern.ch/work/d/dannc/public/output/MakeDigiPassingsim.$(ClusterId).$(ProcId).out
+error                 = /afs/cern.ch/work/d/dannc/public/error/MakeDigiPassingsim.$(ClusterId).$(ProcId).err
+log                   = /afs/cern.ch/work/d/dannc/public/log/MakeDigiPassingsim.$(ClusterId).log
+getenv = false
+RequestCpus = 5
+should_transfer_files = YES
++JobFlavour             ="testmatch"
++AccountingGroup = "group_u_SNDLHC.users"
+notify_user = daniele.centanni@cern.ch
+notification = Always
+on_exit_remove          = (ExitBySignal == False) && (ExitCode == 0)
+max_retries             = 3
+requirements = Machine =!= LastRemoteHost
+arguments             = /eos/user/d/dannc/passingmu_sim/FLUKA_muons_159urad_1e7pr/7086961/sndLHC.Ntuple-TGeant4_150urad_1e7pr.root /eos/user/d/dannc/passingmu_sim/FLUKA_muons_159urad_1e7pr/7086961
+queue
+arguments             = /eos/user/d/dannc/passingmu_sim/FLUKA_muons_159urad_1e7pr/7117221/sndLHC.Ntuple-TGeant4_150urad_1e7pr.root /eos/user/d/dannc/passingmu_sim/FLUKA_muons_159urad_1e7pr/7117221
+queue
+arguments             = /eos/user/d/dannc/passingmu_sim/FLUKA_muons_159urad_1e7pr/7117239/sndLHC.Ntuple-TGeant4_150urad_1e7pr.root /eos/user/d/dannc/passingmu_sim/FLUKA_muons_159urad_1e7pr/7117239
+queue
+arguments             = /eos/user/d/dannc/passingmu_sim/FLUKA_muons_159urad_1e7pr/7135377/sndLHC.Ntuple-TGeant4_150urad_1e7pr.root /eos/user/d/dannc/passingmu_sim/FLUKA_muons_159urad_1e7pr/7135377
+queue
+arguments             = /eos/user/d/dannc/passingmu_sim/FLUKA_muons_-150urad_1e7pr/7160463/sndLHC.Ntuple-TGeant4_-150urad_1e7pr.root /eos/user/d/dannc/passingmu_sim/FLUKA_muons_-150urad_1e7pr/7160463
+queue
+arguments             = /eos/user/d/dannc/passingmu_sim/FLUKA_muons_-150urad_1e7pr/7156376/sndLHC.Ntuple-TGeant4_-150urad_1e7pr.root /eos/user/d/dannc/passingmu_sim/FLUKA_muons_-150urad_1e7pr/7156376
+queue
+arguments             = /eos/user/d/dannc/passingmu_sim/FLUKA_muons_-150urad_1e7pr/7044663/sndLHC.Ntuple-TGeant4_-150urad_1e7pr.root /eos/user/d/dannc/passingmu_sim/FLUKA_muons_-150urad_1e7pr/7044663
+queue
+arguments             = /eos/user/d/dannc/passingmu_sim/FLUKA_muons_-150urad_1e7pr/7201585/sndLHC.Ntuple-TGeant4_-150urad_1e7pr.root /eos/user/d/dannc/passingmu_sim/FLUKA_muons_-150urad_1e7pr/7201585
+queue
+arguments             = /eos/user/d/dannc/passingmu_sim/FLUKA_muons_-150urad_1e7pr/7148758/sndLHC.Ntuple-TGeant4_-150urad_1e7pr.root /eos/user/d/dannc/passingmu_sim/FLUKA_muons_-150urad_1e7pr/7148758
+queue

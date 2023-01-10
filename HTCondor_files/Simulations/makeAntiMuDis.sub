@@ -1,0 +1,54 @@
+executable            = /afs/cern.ch/work/d/dannc/public/MuonBackground/muonDis_sim/makeMuDis.sh
+arguments             = $(ClusterId) $(ProcId) muonDis_1201
+output                = output/MuDIS.sim.$(ClusterId).$(ProcId).out
+error                 = error/MuDIS.sim.$(ClusterId).$(ProcId).err
+log                   = log/MuDIS.sim.$(ClusterId).log
+getenv = false
+RequestCpus = 5
+should_transfer_files = YES
++JobFlavour             ="testmatch"
++AccountingGroup = "group_u_SNDLHC.users"
+notify_user = daniele.centanni@cern.ch
+notification = Error
+on_exit_remove          = (ExitBySignal == False) && (ExitCode == 0)
+max_retries             = 3
+requirements = Machine =!= LastRemoteHost
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1202
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1203
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1204
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1205
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1206
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1207
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1208
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1209
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1210
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1601
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1602
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1603
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1604
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1605
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1606
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1607
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1608
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1609
+queue 47
+arguments             = $(ClusterId) $(ProcId) muonDis_1610
+queue 47
