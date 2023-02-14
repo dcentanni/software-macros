@@ -1,0 +1,16 @@
+universe = vanilla
+executable = /afs/cern.ch/work/d/dannc/public/Neutrinosim/HTCONDOR/makeNuSim.sh
+arguments = /eos/user/d/dannc/AdvSND/neutrino_sim/numu_ADVSNDG18_02a_01_000_HL_LHC/ 10000 +volAdvTarget $(Item) $(ClusterID)
+log=/afs/cern.ch/work/d/dannc/public/Neutrinosim/HTCONDOR/log/AdvNuSim.$(ClusterID).$(Item).log
+output=/afs/cern.ch/work/d/dannc/public/Neutrinosim/HTCONDOR/output/AdvNuSim.$(ClusterID).$(Item).out
+error=/afs/cern.ch/work/d/dannc/public/Neutrinosim/HTCONDOR/error/AdvNuSim.$(ClusterID).$(Item).err
+should_transfer_files = NO
+request_CPUs = 5
++AccountingGroup = "group_u_SNDLHC.users"
++JobFlavour = "testmatch"
+notify_user = daniele.centanni@cern.ch
+notification = Error
+on_exit_remove          = (ExitBySignal == False) && (ExitCode == 0)
+max_retries             = 3
+requirements = Machine =!= LastRemoteHost
+queue Item from nujobs
