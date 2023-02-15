@@ -16,4 +16,4 @@ tmp = options.inFile.split('/')
 outFile = tmp[len(tmp)-1].replace('.root', '.gdml')
 outAll = '/'.join(tmp[:-1])+'/'+outFile
 geo.Export(outAll)
-geo.Export(outgeo+'AdvSNDGeometry.'+today+'.gdml)
+geo.Export(outgeo+'AdvSNDGeometry.'+today+'.gdml')
