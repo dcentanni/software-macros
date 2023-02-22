@@ -244,7 +244,7 @@ def EventDisplay(n=0, save=False, eventTree=eventTree, nav=nav, followmuon=False
             pdgcode = b.PdgCode()
             trkID = b.GetTrackID()
             if trkID < 0: continue
-            if ROOT.TMath.Abs(pdgcode) == 13 and (trkID == 1 or trkID == 0): isMuon = True
+            if ROOT.TMath.Abs(pdgcode) == 13 and (trkID == 1 or trkID == 0 or event.MCTrack[trkID].GetMotherId() == 1): isMuon = True
             if b.GetName() =='AdvTargetPoint': system = 1
             else: system = 2
             if system == 1 and version == 2: station = ROOT.floor(b.GetDetectorID()/10000)
