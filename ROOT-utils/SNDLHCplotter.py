@@ -202,7 +202,7 @@ def drawSingleHisto(hist, canvas=None,xaxtitle=None, yaxtitle=None,
             label=None, color=None, logy=False, drawoptions='',
 	        extratext=None,topmargin=None, bottommargin=None,
 	        leftmargin=None, rightmargin=None,
-	        xaxlabelfont=None, xaxlabelsize=None, outpath='', rebin=None, sigma=list(), scale=1.):
+	        xaxlabelfont=None, xaxlabelsize=None, outpath='', rebin=None, sigma=list(), scale=1., xaxrange=None):
 
     if not canvas:
         canvas = ROOT.TCanvas("c", "c", 800, 600)
@@ -257,6 +257,8 @@ def drawSingleHisto(hist, canvas=None,xaxtitle=None, yaxtitle=None,
     xax.SetTitleFont(10*axtitlefont+3)
     xax.SetTitleSize(axtitlesize)
     xax.SetTitleOffset(1.2)
+    if xaxrange:
+        xax.SetRangeUser(xaxrange[0], xaxrange[1])
 
     if not logy:
         hist.SetMaximum(hist.GetMaximum()*1.2)
@@ -466,7 +468,7 @@ def draw2dHisto(hist, canvas=None,xaxtitle=None, yaxtitle=None,
 
 def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxtitle=None,
 	    normalize=False, dolegend=True, labellist=None, 
-	    colorlist=None, logy=False, drawoptions='', extra_text = '', rebin=None, outpath='.'):
+	    colorlist=None, logy=False, drawoptions='', extra_text = '', rebin=None, outpath='.', scale=1., xaxrange=None):
 
     if not c1: c1 = ROOT.TCanvas("c", "c", 800, 600)
 
@@ -492,7 +494,7 @@ def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxti
     c1.SetRightMargin(rightmargin)
     c1.SetTopMargin(topmargin)
 
-    pentryheight = 0.075
+    pentryheight = 0.08
     nentries = 1 + len(histlist)
     if nentries>3: pentryheight = pentryheight*0.8
     plegendbox = ([leftmargin+0.30,1-topmargin-pentryheight*nentries, 1-rightmargin-0.03,1-topmargin-0.03])
@@ -500,6 +502,9 @@ def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxti
     if rebin is not None:
         for hist in histlist:
             hist.Rebin(int(hist.GetNbinsX()/rebin))
+    
+    if scale !=1.:
+        for hist in histlist: hist.Scale(scale)
 
     pairs = list()
     for hist in histlist:
@@ -532,7 +537,7 @@ def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxti
     legend.SetTextFont(10*legendfont+3)
     legend.SetBorderSize(0)
     for i,hist in enumerate(histlist):
-        label = hist.GetTitle()
+        label = hist.GetName()
         if labellist is not None: label = labellist[i]
         legend.AddEntry(hist,label,"l")
         legend.AddEntry(hist, 'Integral: {:.2e}'.format(hist.Integral()), '')
@@ -552,6 +557,8 @@ def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxti
         xax.SetTitleFont(10*axtitlefont+3)
         xax.SetTitleSize(axtitlesize)
         xax.SetTitleOffset(1.2)
+        if xaxrange:
+            xax.SetRangeUser(xaxrange[0], xaxrange[1])
         # Y-axis layout
         yax = h.GetYaxis()
         yax.SetMaxDigits(3)
@@ -587,6 +594,7 @@ parser.add_argument("-e", "--extratext", dest="extratext", help="extratext", def
 parser.add_argument('-hname', nargs='+', dest="hname", help='List of histos', required=False)
 parser.add_argument("--scale", dest="scalefactor", help="scale factor", required=False, type=float, default=1.)
 parser.add_argument("--auto", dest="auto", action='store_true', required=False, default=False)
+parser.add_argument("--divide", dest="divide", action='store_true', required=False, default=False)
 options = parser.parse_args()
 
 if options.inputFile:
@@ -594,7 +602,7 @@ if options.inputFile:
     outpath = 'plots_'+tmp[0]+'/'
     if not os.path.exists(outpath):
             os.makedirs(outpath)
-    if len(options.hname)> 1:
+    if options.hname and len(options.hname)> 1:
         Hlist = load_hists(options.inputFile, query=options.hname)
     else:
         Hlist = load_hists(options.inputFile)
@@ -618,17 +626,16 @@ if options.inputFile:
     elif options.auto and len(options.hname) < 2:
         i_h = 0
         options.hname = options.hname[0]
-        canvases[i_h] = ROOT.TCanvas("c"+str(i_h), "c"+str(i_h), 800, 600)
+        canvases[i_h] = ROOT.TCanvas("c"+str(i_h), "c"+str(i_h), 800, 800)
         htype = Hlist[options.hname].IsA().GetName()
         if 'TH1' in htype:
-            drawSingleHisto(Hlist[options.hname], canvases[i_h], drawoptions='HIST', extratext=extratext, logy=True, outpath=outpath, scale=options.scalefactor, label='Momentum of muons hitting SciFi', xaxtitle='Momentum [GeV/c]', yaxtitle='dN/dpdt [10^{-1} (GeV/c)^{-1} s^{-1}]', rebin=240)
+            drawSingleHisto(Hlist[options.hname], canvases[i_h], drawoptions='HIST', extratext=extratext, logy=True, outpath=outpath, scale=options.scalefactor, label='Energy of anti-neutrons in Target without Veto', xaxtitle='Energy [GeV]', yaxtitle='dN/dE [(5 GeV)^{-1} fb]', xaxrange=[0,150])
         elif 'TH2' in htype:
             draw2dHisto(Hlist[options.hname], canvases[i_h], extratext=extratext, outpath=outpath)
     elif options.auto and len(options.hname)>1:
         i_h = 0
-        canvases[i_h] = ROOT.TCanvas("c"+str(i_h), "c"+str(i_h), 800, 600)
-        drawMultiHisto(list(Hlist.values()), canvases[i_h], logy=True, drawoptions='HIST', extra_text=extratext, outpath=outpath)
-
+        canvases[i_h] = ROOT.TCanvas("c"+str(i_h), "c"+str(i_h), 800, 800)
+        drawMultiHisto(list(Hlist.values()), canvases[i_h], logy=True, drawoptions='HIST', extra_text=extratext, outpath=outpath, scale=options.scalefactor, yaxtitle='dN/dE [(5 GeV)^{-1} fb]', xaxtitle='Energy [GeV]', xaxrange=[0, 500], labellist=['Energy of K_{S} in Target', 'Energy of K_{S} in Target without Veto'])
 
 elif options.inputCanvas:
     f = ROOT.TFile.Open(options.inputCanvas)
@@ -663,5 +670,6 @@ elif options.inputCanvas:
         drawDATAMC(histlist=histlist, c1=canvases[0], xaxtitle='N SciFi hits', yaxtitle='a.u.', 
                    dolegend=True, labellist=['Data: 39 fb^{-1}', 'MonteCarlo'], figname='Nsfhits', logy=True, extra_text=extratext)
             
-        
+
+
 # edit the last part in order to take and sort all of the items present in the .root file (frame, th1, tlegend, tpavetext...)
