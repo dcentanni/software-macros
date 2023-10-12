@@ -4,6 +4,38 @@ from argparse import ArgumentParser
 
 import ROOT
 
+"""
+    SNDLHCplotter.py    A multi-purpose histogram plotter for SND@LHC (D. Centanni 2023)
+
+    Command-Line Usage
+    ------------------
+    To run the script, open a terminal and execute the following command:
+    python -i SNDLHCplotter.py [options] [arguments]
+
+    | Option            | Description                                                                                           |
+    | ----------------- | ----------------------------------------------------------------------------------------------------- |
+    | --help            | Show the help message and exit.                                                                       |
+    | -f, --inputFile   | Specify the input file path.                                                                          |
+    | -c, --inputCanvas | Specify the input canvas file path.                                                                   |
+    | -e, --extratext   | Add extratext below the SND@LHC writing.                                                              |
+    | -hname            | Specify the name(s) of the histogram(s) to be plotted.                                                |
+    | --scale           | Specify the scale factor to be applied to each histogram.                                             |
+    | --auto            | Enables the auto mode: automatically plots histograms according to the arguments provided.            |
+    | --dataMC          | Enables the Data-MonteCarlo comparison mode: data histogram must contain DATA in its name! (for now). |
+
+    Examples
+    --------
+    1. Auto-mode, single histogram:
+        python -i SNDLHCplotter.py -f histofile.root -hname Nscifi_hits -e Preliminary --auto
+    2. Auto-mode, multi histograms:
+        python -i SNDLHCplotter.py -f histofile.root -hname Nscifi_hits1 Nscifi_hits3 Nscifi_hits3 -e Preliminary --auto
+    3. Auto-mode, Data-Montecarlo comparison:
+        python -i SNDLHCplotter.py -f histofile.root -hname DATA_Nscifi_hits MC_Nscifi_hits --auto
+    4. ...
+
+    Still WIP
+"""
+
 
 def init_style():
 
@@ -617,12 +649,12 @@ def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxti
 parser = ArgumentParser()
 parser.add_argument("-f", "--inputFile", dest="inputFile", help="single input file", required=False)
 parser.add_argument("-c", "--inputCanvas", dest="inputCanvas", help="single input canvas", required=False)
-parser.add_argument("-e", "--extratext", dest="extratext", help="extratext", default=None, required=False)
-parser.add_argument('-hname', nargs='+', dest="hname", help='List of histos', required=False)
+parser.add_argument("-e", "--extratext", dest="extratext", help="extratext written below SND@LHC", default=None, required=False)
+parser.add_argument('-hname', nargs='+', dest="hname", help='List of histos to be drawn', required=False)
 parser.add_argument("--scale", dest="scalefactor", help="scale factor", required=False, type=float, default=1.)
-parser.add_argument("--auto", dest="auto", action='store_true', required=False, default=False)
-parser.add_argument("--divide", dest="divide", action='store_true', required=False, default=False)
-parser.add_argument("--dataMC", dest="dataMC", action='store_true', required=False, default=False)
+parser.add_argument("--auto", dest="auto", action='store_true', help='Enables automatic mode',required=False, default=False)
+#parser.add_argument("--divide", dest="divide", action='store_true', required=False, default=False)
+parser.add_argument("--dataMC", dest="dataMC", help='Enables dataMC comparison mode: data histogram must contain DATA in its name', action='store_true', required=False, default=False)
 options = parser.parse_args()
 
 if options.inputFile:
