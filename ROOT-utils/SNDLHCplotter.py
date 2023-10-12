@@ -1,6 +1,9 @@
-import ROOT
+import os
+import sys
 from argparse import ArgumentParser
-import os, sys
+
+import ROOT
+
 
 def init_style():
 
@@ -198,7 +201,7 @@ def load_hists(histfile, query=None):
     f.Close()
     return histlist
 
-def drawSingleHisto(hist, canvas=None,xaxtitle=None, yaxtitle=None, 
+def drawSingleHisto(hist, canvas=None, xaxtitle=None, yaxtitle=None, 
             label=None, color=None, logy=False, drawoptions='',
 	        extratext=None,topmargin=None, bottommargin=None,
 	        leftmargin=None, rightmargin=None,
@@ -257,9 +260,9 @@ def drawSingleHisto(hist, canvas=None,xaxtitle=None, yaxtitle=None,
     xax.SetTitleFont(10*axtitlefont+3)
     xax.SetTitleSize(axtitlesize)
     xax.SetTitleOffset(1.2)
+    xax.CenterTitle(True)
     if xaxrange:
         xax.SetRangeUser(xaxrange[0], xaxrange[1])
-
     if not logy:
         hist.SetMaximum(hist.GetMaximum()*1.2)
         hist.SetMinimum(0.)
@@ -272,12 +275,12 @@ def drawSingleHisto(hist, canvas=None,xaxtitle=None, yaxtitle=None,
     yax.SetNdivisions(8,4,0,ROOT.kTRUE)
     yax.SetLabelFont(10*yaxlabelfont+3)
     yax.SetLabelSize(yaxlabelsize)
-
     if yaxtitle is not None: 
         yax.SetTitle(yaxtitle)
     yax.SetTitleFont(10*axtitlefont+3)
     yax.SetTitleSize(axtitlesize)
     yax.SetTitleOffset(1.2)
+    yax.CenterTitle(True)
     
     hist.Draw(drawoptions)
     ROOT.gPad.RedrawAxis()
@@ -288,8 +291,8 @@ def drawSingleHisto(hist, canvas=None,xaxtitle=None, yaxtitle=None,
     canvas.SaveAs(outpath+hist.GetName()+'.pdf', 'pdf')
 
 
-def drawDATAMC(histlist, c1=None, figname=None, xaxtitle=None, yaxtitle=None,
-	    normalize=False, dolegend=True, labellist=None, logy=False, extra_text = '', rebin=None, outpath='.'):
+def drawDATAMC(histlist, c1=None, figname='DATA-MC', xaxtitle=None, yaxtitle=None,
+	    normalize=False, lumi=None, dolegend=True, labellist=None, logy=False, extra_text = '', rebin=None, outpath='.', xaxrange=[]):
 
     if not c1:
         c1 = ROOT.TCanvas()
@@ -327,27 +330,44 @@ def drawDATAMC(histlist, c1=None, figname=None, xaxtitle=None, yaxtitle=None,
 
     if normalize:
         for hist in histlist:
+            if hist.Integral() == 0: 
+                print(hist.GetName(), 'has null integral, skipping')
+                return            
             hist.Scale(1./hist.Integral())
+    elif lumi:
+        for hist in histlist:
+            if hist.Integral() == 0: 
+                print(hist.GetName(), 'has null integral, skipping')
+                return  
+            if not 'DATA' in hist.GetName():
+                hist.Scale(lumi)
+            else:
+                hist.Scale(1.)
     
     if not logy:
         maxpair[1].SetMaximum(maxpair[1].GetMaximum()*1.2)
         maxpair[1].SetMinimum(0.)
+        for h in histlist:
+            h.SetMaximum(maxpair[1].GetMaximum()*1.2)
     else:
         maxpair[1].SetMaximum(maxpair[1].GetMaximum()*10)
-        #maxpair[1].SetMinimum(maxpair[1].GetMaximum()/1e7)
+        for h in histlist:
+            h.SetMaximum(maxpair[1].GetMaximum()*10)
         c1.SetLogy()
         
-    #for i,hist in enumerate(histlist):
-    #    hist.SetLineWidth(2)
-    #    hist.SetLineColor(colorlist[i])
-    #    hist.SetMarkerSize(0)
-    histlist[0].SetMarkerColor(ROOT.kBlack)
-    histlist[0].SetLineColor(ROOT.kBlack)
-    histlist[0].SetMarkerStyle(20)
-    histlist[1].SetLineWidth(2)
-    #histlist[1].SetLineColor(ROOT.kAzure-4)
-    histlist[1].SetLineColor(ROOT.kBlack)
-    histlist[1].SetFillColor(ROOT.kAzure-4)
+    data_index = -1
+    for i, h in enumerate(histlist):
+        if 'DATA' in h.GetName():
+            h.SetMarkerColor(ROOT.kBlack)
+            h.SetLineColor(ROOT.kBlack)
+            h.SetMarkerStyle(8)
+            h.SetMarkerSize(0.5)
+            data_index = i
+        else:
+            h.SetLineWidth(1)
+            h.SetFillColor(ROOT.TColor.GetColor("#7d99d1"))
+            h.SetLineColor(ROOT.TColor.GetColor('#0000ee'))
+            h.SetFillStyle(1001)
 
     legend = ROOT.TLegend(plegendbox[0],plegendbox[1],plegendbox[2],plegendbox[3])
     legend.SetNColumns(1)
@@ -358,10 +378,16 @@ def drawDATAMC(histlist, c1=None, figname=None, xaxtitle=None, yaxtitle=None,
     for i,hist in enumerate(histlist):
         label = hist.GetTitle()
         if labellist is not None: label = labellist[i]
-        if i == 0: legend.AddEntry(hist,label,"PEL")
-        else: legend.AddEntry(hist,label,"FL")
-        #legend.AddEntry(hist, 'Integral: '+str(hist.Integral()), '')
-        #legend.AddEntry(hist, 'Mean: {:.2e}'.format(hist.GetMean()), '')
+        else:
+            if 'DATA' in hist.GetName():
+                if lumi:
+                    legend.AddEntry(hist, 'Data L_{int} = '+str(lumi)+' fb^{-1}', "PEL")
+                else:
+                    legend.AddEntry(hist, 'Data', "PEL")
+            else:
+                legend.AddEntry(hist, 'Background', "FEL")
+        legend.AddEntry(hist, 'Integral: {:.2e}'.format(hist.Integral()), '')
+        legend.AddEntry(hist, 'Mean: {:.2e}'.format(hist.GetMean()), '')
     
     for h in histlist:
         xax = h.GetXaxis()
@@ -372,6 +398,8 @@ def drawDATAMC(histlist, c1=None, figname=None, xaxtitle=None, yaxtitle=None,
         xax.SetTitleFont(10*axtitlefont+3)
         xax.SetTitleSize(axtitlesize)
         xax.SetTitleOffset(1.2)
+        if xaxrange:
+            xax.SetRangeUser(xaxrange[0], xaxrange[1])
         # Y-axis layout
         yax = h.GetYaxis()
         yax.SetMaxDigits(3)
@@ -382,26 +410,20 @@ def drawDATAMC(histlist, c1=None, figname=None, xaxtitle=None, yaxtitle=None,
         yax.SetTitleFont(10*axtitlefont+3)
         yax.SetTitleSize(axtitlesize)
         yax.SetTitleOffset(1.2)
-        hist.SetMaximum(maxpair[1].GetMaximum())
+        yax.CenterTitle(True)
+        hist.SetMaximum(maxpair[1].GetMaximum()*1.2)
 
-    histlist[1].Draw('HIST')
-    histlist[0].Draw('SAME')
+    for i in range(len(histlist)):
+        drawopt = ''
+        if i!= data_index:
+            if histlist[i].GetEntries() < 20: drawopt = 'E'
+            histlist[i].Draw("HIST SAME "+drawopt)
+    histlist[data_index].Draw("* SAME")
     
-
-    """if maxpair[1] == histlist[0]:
-        maxpair[1].Draw()
-        lasts = list(pair for pair in pairs if pair != maxpair)
-        for last in lasts:
-            last[1].DrawClone("HIST SAME")
-    else:
-        maxpair[1].Draw('HIST')
-        lasts = list(pair for pair in pairs if pair != maxpair)
-        for last in lasts:
-            last[1].DrawClone("SAME")"""
     
     ROOT.gPad.RedrawAxis()
     writeSND(c1, extratext=extra_text)
-    if dolegend: legend.DrawClone()
+    if dolegend: legend.DrawClone("same")
     ROOT.gPad.Update()
     c1.Draw()
     c1.SaveAs(outpath+figname+'.pdf', 'pdf')
@@ -520,13 +542,16 @@ def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxti
     if not logy:
         maxpair[1].SetMaximum(maxpair[1].GetMaximum()*1.2)
         maxpair[1].SetMinimum(0.)
+        for h in histlist:
+            h.SetMaximum(maxpair[1].GetMaximum()*1.2)
     else:
         maxpair[1].SetMaximum(maxpair[1].GetMaximum()*10)
-        #maxpair[1].SetMinimum(maxpair[1].GetMaximum()/1e7)
+        for h in histlist:
+            h.SetMaximum(maxpair[1].GetMaximum()*10)
         c1.SetLogy()
     
     for i,hist in enumerate(histlist):
-        hist.SetLineWidth(1)
+        hist.SetLineWidth(2)
         hist.SetLineColor(colorlist[i])
         hist.SetMarkerSize(0)
 
@@ -539,7 +564,7 @@ def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxti
     for i,hist in enumerate(histlist):
         label = hist.GetName()
         if labellist is not None: label = labellist[i]
-        legend.AddEntry(hist,label,"l")
+        legend.AddEntry(hist,label,"FL")
         legend.AddEntry(hist, 'Integral: {:.2e}'.format(hist.Integral()), '')
         legend.AddEntry(hist, 'Mean: {:.2e}'.format(hist.GetMean()), '')
     
@@ -557,6 +582,7 @@ def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxti
         xax.SetTitleFont(10*axtitlefont+3)
         xax.SetTitleSize(axtitlesize)
         xax.SetTitleOffset(1.2)
+        xax.CenterTitle(True)
         if xaxrange:
             xax.SetRangeUser(xaxrange[0], xaxrange[1])
         # Y-axis layout
@@ -573,6 +599,7 @@ def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxti
         yax.SetTitleFont(10*axtitlefont+3)
         yax.SetTitleSize(axtitlesize)
         yax.SetTitleOffset(1.2)
+        yax.CenterTitle(True)
         hist.SetMaximum(maxpair[1].GetMaximum())
 
     histlist[0].Draw(drawoptions)
@@ -581,7 +608,7 @@ def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxti
     
     ROOT.gPad.RedrawAxis()
     writeSND(c1, extratext=extra_text)
-    if dolegend: legend.DrawClone()
+    if dolegend: legend.DrawClone("same")
     ROOT.gPad.Update()
     c1.Draw()
     c1.SaveAs(outpath+figname+'.pdf', 'pdf')
@@ -595,6 +622,7 @@ parser.add_argument('-hname', nargs='+', dest="hname", help='List of histos', re
 parser.add_argument("--scale", dest="scalefactor", help="scale factor", required=False, type=float, default=1.)
 parser.add_argument("--auto", dest="auto", action='store_true', required=False, default=False)
 parser.add_argument("--divide", dest="divide", action='store_true', required=False, default=False)
+parser.add_argument("--dataMC", dest="dataMC", action='store_true', required=False, default=False)
 options = parser.parse_args()
 
 if options.inputFile:
@@ -628,14 +656,18 @@ if options.inputFile:
         options.hname = options.hname[0]
         canvases[i_h] = ROOT.TCanvas("c"+str(i_h), "c"+str(i_h), 800, 800)
         htype = Hlist[options.hname].IsA().GetName()
+        sel_hist = Hlist[options.hname]
         if 'TH1' in htype:
-            drawSingleHisto(Hlist[options.hname], canvases[i_h], drawoptions='HIST', extratext=extratext, logy=True, outpath=outpath, scale=options.scalefactor, label='Energy of anti-neutrons in Target without Veto', xaxtitle='Energy [GeV]', yaxtitle='dN/dE [(5 GeV)^{-1} fb]', xaxrange=[0,150])
+            drawSingleHisto(Hlist[options.hname], canvases[i_h], drawoptions='HIST', extratext=extratext, logy=True, outpath=outpath, scale=options.scalefactor, label=sel_hist.GetTitle(), xaxtitle=sel_hist.GetXaxis().GetTitle(), yaxtitle=sel_hist.GetYaxis().GetTitle()) #,xaxrange[])
         elif 'TH2' in htype:
             draw2dHisto(Hlist[options.hname], canvases[i_h], extratext=extratext, outpath=outpath)
     elif options.auto and len(options.hname)>1:
         i_h = 0
         canvases[i_h] = ROOT.TCanvas("c"+str(i_h), "c"+str(i_h), 800, 800)
-        drawMultiHisto(list(Hlist.values()), canvases[i_h], logy=True, drawoptions='HIST', extra_text=extratext, outpath=outpath, scale=options.scalefactor, yaxtitle='dN/dE [(5 GeV)^{-1} fb]', xaxtitle='Energy [GeV]', xaxrange=[0, 500], labellist=['Energy of K_{S} in Target', 'Energy of K_{S} in Target without Veto'])
+        if options.dataMC:
+            drawDATAMC(list(Hlist.values()), canvases[i_h], xaxtitle=list(Hlist.values())[0].GetXaxis().GetTitle(), yaxtitle=list(Hlist.values())[0].GetYaxis().GetTitle(), normalize=True, extra_text='DATA-MC Comparison')
+        else:
+            drawMultiHisto(list(Hlist.values()), canvases[i_h], logy=True, drawoptions='HIST', extra_text=extratext, outpath=outpath, scale=options.scalefactor, yaxtitle=list(Hlist.values())[0].GetYaxis().GetTitle(), xaxtitle=list(Hlist.values())[0].GetXaxis().GetTitle())
 
 elif options.inputCanvas:
     f = ROOT.TFile.Open(options.inputCanvas)
