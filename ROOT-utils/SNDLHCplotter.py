@@ -30,7 +30,7 @@ import ROOT
     2. Auto-mode, multi histograms:
         python -i SNDLHCplotter.py -f histofile.root -hname Nscifi_hits1 Nscifi_hits3 Nscifi_hits3 -e Preliminary --auto
     3. Auto-mode, Data-Montecarlo comparison:
-        python -i SNDLHCplotter.py -f histofile.root -hname DATA_Nscifi_hits MC_Nscifi_hits --auto
+        python -i SNDLHCplotter.py -f histofile.root -hname DATA_Nscifi_hits MC_Nscifi_hits --auto --dataMC
     4. ...
 
     Still WIP
