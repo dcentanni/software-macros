@@ -1,0 +1,14 @@
+executable            = /afs/cern.ch/work/d/dannc/public/MuonBackground/muonDis_sim/condor_DISfilter/DISfilter_stage1.sh
+arguments             = $(ClusterId) $(ProcId) $(Item) $(RUN)
+output                = /afs/cern.ch/work/d/dannc/public/MuonBackground/muonDis_sim/condor_DISfilter/output/DATA_DISfilter_stage1_$(RUN).$(ClusterId).$(ProcId).out
+error                 = /afs/cern.ch/work/d/dannc/public/MuonBackground/muonDis_sim/condor_DISfilter/error/DATA_DISfilter_stage1_$(RUN).$(ClusterId).$(ProcId).err
+log                   = /afs/cern.ch/work/d/dannc/public/MuonBackground/muonDis_sim/condor_DISfilter/log/DATA_DISfilter_stage1_$(RUN).$(ClusterId).log
+getenv = false
+notification = Error
+notify_user = daniele.centanni@cern.ch
+should_transfer_files = YES
++AccountingGroup = "group_u_SNDLHC.users"
++JobFlavour             ="testmatch"
+on_exit_remove = (ExitBySignal == False) && (ExitCode == 0)
+max_retries = 3
+queue Item from /afs/cern.ch/work/d/dannc/public/MuonBackground/muonDis_sim/DATARUNPRINTS/printrun_00$(RUN).dat

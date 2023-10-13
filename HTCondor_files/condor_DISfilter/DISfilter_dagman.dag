@@ -1,0 +1,14 @@
+JOB A /afs/cern.ch/work/d/dannc/public/MuonBackground/muonDis_sim/condor_DISfilter/DISfilter_stage1.sub
+JOB B /afs/cern.ch/work/d/dannc/public/MuonBackground/muonDis_sim/condor_DISfilter/DISfilter_tracking.sub
+JOB C /afs/cern.ch/work/d/dannc/public/MuonBackground/muonDis_sim/condor_DISfilter/DISfilter_stage2.sub
+JOB D /afs/cern.ch/work/d/dannc/public/MuonBackground/muonDis_sim/condor_DISfilter/DISfilter_hadd.sub
+
+VARS A RUN="6610"
+VARS B RUN="6610"
+VARS C RUN="6610"
+VARS D RUN="6610"
+
+PARENT A CHILD B
+PARENT B CHILD C
+PARENT C CHILD D
+
