@@ -1,9 +1,11 @@
 import os
 import sys
 from argparse import ArgumentParser
+from datetime import date
 
 import ROOT
 
+today = date.today().strftime('%d%m%y')
 """
     SNDLHCplotter.py    A multi-purpose histogram plotter for SND@LHC (D. Centanni 2023)
 
@@ -232,6 +234,46 @@ def load_hists(histfile, query=None):
     if len(histlist) == 0: raise Exception('ERROR: histlist is empty!')
     f.Close()
     return histlist
+
+def getHistFromfiles(filelist, hname, labellist):
+    histlist = {}
+    if len(file_list) != len(labellist): raise Exception('N. of files and labels mismatches!')
+    for i_file, f in enumerate(file_list):
+        fin = ROOT.TFile.Open(f)
+        hist = fin.Get(hname)
+        try:
+            hist.SetDirectory(ROOT.gROOT)
+        except:
+            print('### WARNING ###: Name "'+str(hname)+'" does not correspond to valid hist.')
+            continue
+        hist.SetName(labellist[i_file]+'_'+hname)
+        histlist[labellist[i_file]+'_'+hname] = hist
+        fin.Close()
+    if len(histlist) == 0: raise Exception('ERROR: histlist is empty!')
+    return histlist
+    
+
+def createCanvas(noPlots):
+    if noPlots == 1:
+        xPad = 1; yPad = 1; width = 550; height = 0.90*width
+    elif noPlots == 2:
+        xPad = 2; yPad = 1; width = 600; height = 0.50*width
+    elif noPlots == 3:
+        xPad = 3; yPad = 1; width = 900; height = 0.4*width
+    elif noPlots == 4:
+        xPad = 2; yPad = 2; width = 600; height = width
+    else:
+        xPad = 3; yPad = 2; width = 800; height = 0.55*width
+    noPadPerCanv = xPad * yPad
+    nCanvases = int(noPlots/6)+1
+    canvs = {}
+    for i in range(nCanvases):
+        #canvs['canv'+str(i)] = ROOT.TCanvas("canv"+str(i), "Variables", int(width), int(height))
+        canvs['canv'+str(i)] = ROOT.TCanvas("canv"+str(i), "Variables", 1200, int(0.55*1200))
+        canvs['canv'+str(i)].Divide(xPad, yPad)
+    #canv = ROOT.TCanvas("canv", "Variables", int(width), int(height))
+    #canv = ROOT.TCanvas("canv", "Variables", 1200, int(0.55*1200))
+    return canvs
 
 def drawSingleHisto(hist, canvas=None, xaxtitle=None, yaxtitle=None, 
             label=None, color=None, logy=False, drawoptions='',
@@ -560,16 +602,17 @@ def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxti
     if scale !=1.:
         for hist in histlist: hist.Scale(scale)
 
+    if normalize:
+        for hist in histlist:
+            hist.Scale(1./hist.Integral())
+    
     pairs = list()
     for hist in histlist:
         hist.SetStats(0)
         pairs.append([hist.GetMaximum(), hist])
+    print(pairs)
     maxpair = max(pairs,key=lambda item:item[0])
-
-
-    if normalize:
-        for hist in histlist:
-            hist.Scale(1./hist.Integral())
+    print('Max is', maxpair)
     
     if not logy:
         maxpair[1].SetMaximum(maxpair[1].GetMaximum()*1.2)
@@ -582,10 +625,24 @@ def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxti
             h.SetMaximum(maxpair[1].GetMaximum()*10)
         c1.SetLogy()
     
-    for i,hist in enumerate(histlist):
-        hist.SetLineWidth(2)
-        hist.SetLineColor(colorlist[i])
-        hist.SetMarkerSize(0)
+    if len(histlist) == 3:
+        histlist[2].SetMarkerColor(ROOT.kBlack)
+        histlist[2].SetLineColor(ROOT.kBlack)
+        histlist[2].SetMarkerStyle(8)
+        histlist[2].SetMarkerSize(0.5)
+        histlist[1].SetLineWidth(1)
+        histlist[1].SetFillColor(ROOT.TColor.GetColor("#7d99d1"))
+        histlist[1].SetLineColor(ROOT.TColor.GetColor('#0000ee'))
+        histlist[1].SetFillStyle(1001)
+        histlist[0].SetLineWidth(1)
+        histlist[0].SetFillColor(ROOT.TColor.GetColor("#ff0000"))
+        histlist[0].SetLineColor(ROOT.TColor.GetColor('#ff0000'))
+        histlist[0].SetFillStyle(3554)
+    else:
+        for i,hist in enumerate(histlist):
+            hist.SetLineWidth(2)
+            hist.SetLineColor(colorlist[i])
+            hist.SetMarkerSize(0)
 
     legend = ROOT.TLegend(plegendbox[0],plegendbox[1],plegendbox[2],plegendbox[3])
     legend.SetNColumns(1)
@@ -632,11 +689,15 @@ def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxti
         yax.SetTitleSize(axtitlesize)
         yax.SetTitleOffset(1.2)
         yax.CenterTitle(True)
-        hist.SetMaximum(maxpair[1].GetMaximum())
 
-    histlist[0].Draw(drawoptions)
-    for hist in histlist[1:]:
-        hist.Draw('same '+drawoptions)
+    if len(histlist) == 3:
+        for hist in histlist[:2]:
+            hist.Draw('same '+drawoptions)
+        histlist[2].Draw("* SAME")
+    else:
+        histlist[0].Draw(drawoptions)
+        for hist in histlist[1:]:
+            hist.Draw('same '+drawoptions)
     
     ROOT.gPad.RedrawAxis()
     writeSND(c1, extratext=extra_text)
@@ -644,28 +705,76 @@ def drawMultiHisto(histlist, c1=None, figname='multihisto', xaxtitle=None, yaxti
     ROOT.gPad.Update()
     c1.Draw()
     c1.SaveAs(outpath+figname+'.pdf', 'pdf')
-    
+
+def MultiCanvas(query=None):
+    if len(options.inputFile) == 1: f = options.inputFile[0]
+    histlist = load_hists(f)
+    if query == None:
+        Varlist = [histlist.keys()]
+    else:
+        Varlist = query
+    noPlots = len(Varlist)
+    global canvs
+    canvs = createCanvas(noPlots)
+    for icanv, canv in enumerate(canvs.values()):
+        ipad = 0
+        min = 6*icanv
+        max = 6*(icanv+1)
+        if max > len(Varlist): max= len(Varlist)
+        for var in Varlist[min:max]:
+            sel_histo = histlist[var] 
+            #print('Var is', var, 'Selected histos', hlist, 'name', hlist[0].GetName(), hlist[1].GetName(), hlist[2].GetName())
+            pad = canv.cd(ipad+1)
+            logy = False
+            norm = True
+            axtitle = 'a.u.'
+            if options.lumi:
+                norm = False
+                axtitle='N'
+                logy=True
+                if options.norm: 
+                    norm = True
+                    axtitle= 'a.u.'
+            #drawDATAMC(hlist, c1=pad, xaxtitle=var, yaxtitle=axtitle, normalize=norm, extra_text='Comparison', logy=logy, lumi=options.lumi) There can be an option to plot TMVA-like canvas
+            drawSingleHisto(sel_hist, c1=pad, xaxtitle=sel_hist.GetXaxis().GetTitle(), yaxtitle=axtitle, extratext=options.extratext, logy=logy, drawoptions='HIST', outpath=outpath, scale=options.scalefactor, label=sel_hist.GetTitle())
+            ipad+=1
+        canv.SaveAs("canvas_"+str(icanv)+".pdf", "pdf") 
 
 parser = ArgumentParser()
-parser.add_argument("-f", "--inputFile", dest="inputFile", help="single input file", required=False)
+parser.add_argument("-f", nargs='+', dest="inputFile", help="input files", required=False)
+parser.add_argument("-labels", nargs='+', dest="labels", help="list of labels", required=False, default=None)
 parser.add_argument("-c", "--inputCanvas", dest="inputCanvas", help="single input canvas", required=False)
 parser.add_argument("-e", "--extratext", dest="extratext", help="extratext written below SND@LHC", default=None, required=False)
 parser.add_argument('-hname', nargs='+', dest="hname", help='List of histos to be drawn', required=False)
 parser.add_argument("--scale", dest="scalefactor", help="scale factor", required=False, type=float, default=1.)
+parser.add_argument("--lumi", dest="lumi", help="luminosity factor", required=False, type=float, default=None)
 parser.add_argument("--auto", dest="auto", action='store_true', help='Enables automatic mode',required=False, default=False)
-#parser.add_argument("--divide", dest="divide", action='store_true', required=False, default=False)
+parser.add_argument("--norm", dest="norm", action='store_true', help='Normalizes multi-hist plotting',required=False, default=False)
 parser.add_argument("--dataMC", dest="dataMC", help='Enables dataMC comparison mode: data histogram must contain DATA in its name', action='store_true', required=False, default=False)
 options = parser.parse_args()
 
+if options.inputFile and len(options.inputFile) > 1 and len(options.hname)>1: raise Exception('Multi-file & Multi-histos not yet implemented!')
+if options.inputFile and len(options.inputFile) > 1 and len(options.hname)==1 and options.labels == None: raise Exception('Please provide labellist for different input files!')
+
 if options.inputFile:
-    tmp = options.inputFile.split('.')
+    if len(options.inputFile) < 2:
+        options.inputFile = options.inputFile[0]
+        tmp = options.inputFile.split('.')
+        if options.hname and len(options.hname)> 1:
+            Hlist = load_hists(options.inputFile, query=options.hname)
+        else:
+            Hlist = load_hists(options.inputFile)
+    else:
+        tmp = [str(today)]
+        if options.hname and len(options.hname) < 2:
+            file_list = options.inputFile
+            Hlist = getHistFromfiles(file_list, options.hname[0], options.labels)
+            print(Hlist)
     outpath = 'plots_'+tmp[0]+'/'
     if not os.path.exists(outpath):
             os.makedirs(outpath)
-    if options.hname and len(options.hname)> 1:
-        Hlist = load_hists(options.inputFile, query=options.hname)
-    else:
-        Hlist = load_hists(options.inputFile)
+    
+        
 
 canvases    = {}
 extratext=''
@@ -684,22 +793,32 @@ if options.inputFile:
             elif 'TH2' in htype:
                 draw2dHisto(h, canvases[i_h], extratext=extratext, outpath=outpath)
     elif options.auto and len(options.hname) < 2:
-        i_h = 0
-        options.hname = options.hname[0]
-        canvases[i_h] = ROOT.TCanvas("c"+str(i_h), "c"+str(i_h), 800, 800)
-        htype = Hlist[options.hname].IsA().GetName()
-        sel_hist = Hlist[options.hname]
-        if 'TH1' in htype:
-            drawSingleHisto(Hlist[options.hname], canvases[i_h], drawoptions='HIST', extratext=extratext, logy=True, outpath=outpath, scale=options.scalefactor, label=sel_hist.GetTitle(), xaxtitle=sel_hist.GetXaxis().GetTitle(), yaxtitle=sel_hist.GetYaxis().GetTitle()) #,xaxrange[])
-        elif 'TH2' in htype:
-            draw2dHisto(Hlist[options.hname], canvases[i_h], extratext=extratext, outpath=outpath)
+        if len(options.inputFile) < 2:
+            i_h = 0
+            options.hname = options.hname[0]
+            canvases[i_h] = ROOT.TCanvas("c"+str(i_h), "c"+str(i_h), 800, 800)
+            htype = Hlist[options.hname].IsA().GetName()
+            sel_hist = Hlist[options.hname]
+            if 'TH1' in htype:
+                drawSingleHisto(Hlist[options.hname], canvases[i_h], drawoptions='HIST', extratext=extratext, logy=True, outpath=outpath, scale=options.scalefactor, label=sel_hist.GetTitle(), xaxtitle=sel_hist.GetXaxis().GetTitle(), yaxtitle=sel_hist.GetYaxis().GetTitle()) #,xaxrange[])
+            elif 'TH2' in htype:
+                draw2dHisto(Hlist[options.hname], canvases[i_h], extratext=extratext, outpath=outpath)
+        else:
+            i_h = 0
+            options.hname = options.hname[0]
+            canvases[i_h] = ROOT.TCanvas("c"+str(i_h), "c"+str(i_h), 800, 800)
+            for hist in Hlist.values():
+                if not 'TH1' in hist.IsA().GetName(): 
+                    print('Not supported!')
+                    continue
+            drawMultiHisto(list(Hlist.values()), canvases[i_h], drawoptions='HIST', extra_text=extratext, outpath=outpath, scale=options.scalefactor, yaxtitle=list(Hlist.values())[0].GetYaxis().GetTitle(), xaxtitle=list(Hlist.values())[0].GetXaxis().GetTitle(), normalize=options.norm)
     elif options.auto and len(options.hname)>1:
         i_h = 0
         canvases[i_h] = ROOT.TCanvas("c"+str(i_h), "c"+str(i_h), 800, 800)
         if options.dataMC:
             drawDATAMC(list(Hlist.values()), canvases[i_h], xaxtitle=list(Hlist.values())[0].GetXaxis().GetTitle(), yaxtitle=list(Hlist.values())[0].GetYaxis().GetTitle(), normalize=True, extra_text='DATA-MC Comparison')
         else:
-            drawMultiHisto(list(Hlist.values()), canvases[i_h], logy=True, drawoptions='HIST', extra_text=extratext, outpath=outpath, scale=options.scalefactor, yaxtitle=list(Hlist.values())[0].GetYaxis().GetTitle(), xaxtitle=list(Hlist.values())[0].GetXaxis().GetTitle())
+            drawMultiHisto(list(Hlist.values()), canvases[i_h], logy=True, drawoptions='HIST', extra_text=extratext, outpath=outpath, scale=options.scalefactor, yaxtitle=list(Hlist.values())[0].GetYaxis().GetTitle(), xaxtitle=list(Hlist.values())[0].GetXaxis().GetTitle(), normalize=options.norm)
 
 elif options.inputCanvas:
     f = ROOT.TFile.Open(options.inputCanvas)
