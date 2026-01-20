@@ -1,0 +1,18 @@
+executable = /afs/cern.ch/work/d/dannc/public/MuDIS_sim/condor_simproc.sh
+arguments = $(CELL)
+output = /afs/cern.ch/work/d/dannc/public/MuDIS_sim/logs/output/simproc.$(ClusterId).$(CELL).out
+error = /afs/cern.ch/work/d/dannc/public/MuDIS_sim/logs/error/simproc.$(ClusterId).$(CELL).err
+log = /afs/cern.ch/work/d/dannc/public/MuDIS_sim/logs/log/simproc.$(ClusterId).log
+
+should_transfer_files = yes
+
++JobFlavour = "workday"
+request_memory = 12GB
++HEPSPEC_PER_CORE = 10
+requirements = TARGET.HEPSPEC_PER_CORE =!= UNDEFINED
+notification = Never
+requirements = (OpSysAndVer =?= "AlmaLinux9")
+requirements = Machine =!= LastRemoteHost
+on_exit_remove          = (ExitBySignal == False) && ((ExitCode == 1) || (ExitCode == 0))
+max_retries             = 3
+queue CELL from seq 0 323 |

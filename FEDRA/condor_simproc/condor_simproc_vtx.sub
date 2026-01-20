@@ -1,0 +1,27 @@
+executable = /afs/cern.ch/work/d/dannc/public/MuDIS_sim/condor_simproc_vtx.sh
+EXP_DIR = /eos/experiment/sndlhc/users/dancc/FEDRA/muon_regenRUN1/
+#EXP_DIR = /eos/experiment/sndlhc/users/dancc/FEDRA/muon_Euniform_RUN1/
+X = ($(CELL) % 18 + 1)
+Y = ($(CELL) / 18 + 1)
+CELLFOLDER = cell_$INT(X)0_$INT(Y)0
+arguments = $(CELL) $(CELLFOLDER) $(EXP_DIR)
+output = /afs/cern.ch/work/d/dannc/public/MuDIS_sim/logs/output/simproc_vtx.$(ClusterId).$(CELL).out
+error = /afs/cern.ch/work/d/dannc/public/MuDIS_sim/logs/error/simproc_vtx.$(ClusterId).$(CELL).err
+log = /afs/cern.ch/work/d/dannc/public/MuDIS_sim/logs/log/simproc_vtx.$(ClusterId).log
+
+transfer_plugins=/eos/experiment/sndlhc/plugins/xrdcp_plugin.py
+#output_destination=root://eospublic.cern.ch/$(EXP_DIR)/cell_reco/$(CELLFOLDER)/$(BRICKFOLDER)/
+#transfer_output_files=$(BRICKFOLDER).0.$INT(X).$INT(Y).vtx.root, $(BRICKFOLDER).0.$INT(X).$INT(Y).vtx.discimp.root, $(BRICKFOLDER).0.$INT(X).$INT(Y).set.root,$(BRICKFOLDER).0.$INT(X).$INT(Y).trk.root
+should_transfer_files = yes
+
++JobFlavour = "longlunch"
+#request_memory = 12GB
++HEPSPEC_PER_CORE = 10
+requirements = TARGET.HEPSPEC_PER_CORE =!= UNDEFINED
+notification = Never
+requirements = (OpSysAndVer =?= "AlmaLinux9")
+requirements = Machine =!= LastRemoteHost
+on_exit_remove          = (ExitBySignal == False) && ((ExitCode == 1) || (ExitCode == 0))
+max_retries             = 3
+queue CELL from seq 0 323 |
+#queue CELL in 309
