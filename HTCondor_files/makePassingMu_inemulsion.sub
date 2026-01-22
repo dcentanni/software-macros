@@ -1,0 +1,16 @@
+universe = vanilla
+executable = /afs/cern.ch/work/d/dannc/public/MuonBackground/makePassingMu_inemulsion.sh
+arguments = /eos/user/d/dannc/MuonBack_sim/18052023/ $(ClusterID) $(ProcId)
+log=/afs/cern.ch/work/d/dannc/public/MuonBackground/log/PassingMuSimEm.$(ClusterID).log
+output=/afs/cern.ch/work/d/dannc/public/MuonBackground/output/PassingMuSimEm.$(ClusterID).$(ProcId).out
+error=/afs/cern.ch/work/d/dannc/public/MuonBackground/error/PassingMuSimEm.$(ClusterID).$(ProcId).err
+should_transfer_files = NO
+request_CPUs = 5
++AccountingGroup = "group_u_SNDLHC.users"
++JobFlavour = "testmatch"
+notify_user = daniele.centanni@cern.ch
+notification = Error
+on_exit_remove          = (ExitBySignal == False) && (ExitCode == 0)
+max_retries             = 3
+requirements = Machine =!= LastRemoteHost
+queue 100

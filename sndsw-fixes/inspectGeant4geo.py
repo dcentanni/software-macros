@@ -1,6 +1,10 @@
 import sys
+from array import array
+
 import ROOT
+import shipunit as u
 from rootpyPickler import Unpickler
+
 #import shipRoot_conf
 #shipRoot_conf.configure()
 
@@ -11,6 +15,7 @@ if len(sys.argv) > 1:
 fgeo = ROOT.TFile(fname)
 sGeo = fgeo.FAIRGeom
 import shipLHC_conf
+
 run = ROOT.FairRunSim()
 upkl = Unpickler(fgeo)
 snd_geo = upkl.load('ShipGeo')
@@ -21,5 +26,6 @@ run.SetOutputFile(ROOT.TMemFile('output', 'recreate'))
 run.Init()
 run.Run(0)
 import geomGeant4
+
 geomGeant4.printVMCFields()
 #geomGeant4.printWeightsandFields() not working for now

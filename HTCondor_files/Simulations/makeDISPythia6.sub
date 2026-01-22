@@ -1,0 +1,18 @@
+executable            = /afs/cern.ch/work/d/dannc/public/MuonBackground/muonDis_sim/makeDISPythia6.sh
+arguments             = $(ClusterId) $(ProcId) 2
+output                = output/MuDIS.Pythia6.$(ClusterId).$(ProcId).out
+error                 = error/MuDIS.Pythia6.$(ClusterId).$(ProcId).err
+log                   = log/MuDIS.Pythia6.$(ClusterId).log
+getenv = false
+RequestCpus = 5
+should_transfer_files = YES
++JobFlavour             ="nextweek"
++AccountingGroup = "group_u_SNDLHC.users"
+notify_user = daniele.centanni@cern.ch
+notification = Error
+on_exit_remove          = (ExitBySignal == False) && (ExitCode == 0)
+max_retries             = 3
+requirements = Machine =!= LastRemoteHost
+queue 10
+arguments             = $(ClusterId) $(ProcId) 5
+queue 10

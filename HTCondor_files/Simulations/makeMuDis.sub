@@ -6,49 +6,49 @@ log                   = log/MuDIS.sim.$(ClusterId).log
 getenv = false
 RequestCpus = 5
 should_transfer_files = YES
-+JobFlavour             ="testmatch"
++JobFlavour             ="nextweek"
 +AccountingGroup = "group_u_SNDLHC.users"
 notify_user = daniele.centanni@cern.ch
 notification = Error
 on_exit_remove          = (ExitBySignal == False) && (ExitCode == 0)
 max_retries             = 3
 requirements = Machine =!= LastRemoteHost
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_202
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_203
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_204
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_205
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_206
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_207
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_208
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_209
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_210
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_501
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_502
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_503
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_504
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_505
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_506
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_507
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_508
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_509
-queue 46
+queue 100
 arguments             = $(ClusterId) $(ProcId) muonDis_510
-queue 46
+queue 100
