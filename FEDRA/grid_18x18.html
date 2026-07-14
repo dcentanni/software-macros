@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>18x18 Grid</title>
+<style>
+  :root {
+    --white: #ffffff;
+    --green: #2ecc71;
+    --yellow: #f1c40f;
+    --red: #e74c3c;
+    --border: #333;
+  }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    background: #1c1c1c;
+    color: #f0f0f0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+    margin: 0;
+  }
+  h1 {
+    font-size: 20px;
+    margin-bottom: 4px;
+  }
+  p.info {
+    color: #bbb;
+    font-size: 13px;
+    margin-top: 0;
+    margin-bottom: 16px;
+    text-align: center;
+    max-width: 500px;
+  }
+  #grid-wrapper {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    grid-template-rows: 20px 1fr;
+    position: relative;
+  }
+  #corner {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  #col-labels {
+    grid-column: 2;
+    grid-row: 1;
+    display: grid;
+    grid-template-columns: repeat(18, 28px);
+    gap: 2px;
+    padding: 0 2px;
+  }
+  #row-labels {
+    grid-column: 1;
+    grid-row: 2;
+    display: grid;
+    grid-template-rows: repeat(18, 28px);
+    gap: 2px;
+    padding: 2px 0;
+  }
+  .axis-label {
+    font-size: 10px;
+    color: #aaa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #grid {
+    grid-column: 2;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(18, 28px);
+    grid-template-rows: repeat(18, 28px);
+    gap: 2px;
+    background: var(--border);
+    padding: 2px;
+    border: 2px solid var(--border);
+  }
+  .cell {
+    width: 28px;
+    height: 28px;
+    background: var(--white);
+    cursor: pointer;
+    box-sizing: border-box;
+    transition: background 0.1s ease;
+    position: relative;
+  }
+  .cell:hover {
+    outline: 1px solid #888;
+    outline-offset: -1px;
+  }
+  #tooltip {
+    position: fixed;
+    pointer-events: none;
+    background: #000;
+    color: #fff;
+    font-size: 11px;
+    padding: 3px 7px;
+    border-radius: 4px;
+    border: 1px solid #555;
+    display: none;
+    z-index: 10;
+    white-space: nowrap;
+  }
+  #controls {
+    margin-top: 20px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  button {
+    background: #3a3a3a;
+    color: #f0f0f0;
+    border: 1px solid #555;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+  }
+  button:hover {
+    background: #4a4a4a;
+  }
+  #legend {
+    margin-top: 16px;
+    display: flex;
+    gap: 16px;
+    font-size: 13px;
+    color: #ccc;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .swatch {
+    width: 14px;
+    height: 14px;
+    border: 1px solid #555;
+    display: inline-block;
+  }
+  #status {
+    margin-top: 10px;
+    font-size: 13px;
+    color: #8fdc8f;
+    min-height: 18px;
+  }
+</style>
+</head>
+<body>
+
+<h1>18x18 Grid</h1>
+<p class="info">
+  Click a cell to change its color. Each click follows the cycle:
+  white → green → yellow → red → white. Hover over a cell to see its name.
+</p>
+
+<div id="grid-wrapper">
+  <div id="corner"></div>
+  <div id="col-labels"></div>
+  <div id="row-labels"></div>
+  <div id="grid"></div>
+</div>
+
+<div id="tooltip"></div>
+
+<div id="legend">
+  <div class="legend-item"><span class="swatch" style="background:var(--white)"></span> White</div>
+  <div class="legend-item"><span class="swatch" style="background:var(--green)"></span> Green</div>
+  <div class="legend-item"><span class="swatch" style="background:var(--yellow)"></span> Yellow</div>
+  <div class="legend-item"><span class="swatch" style="background:var(--red)"></span> Red</div>
+</div>
+
+<div id="controls">
+  <button id="resetBtn">Reset grid</button>
+  <button id="exportBtn">Download .dat file</button>
+  <button id="importBtn">Load .dat file</button>
+  <input type="file" id="fileInput" accept=".dat,.txt" style="display:none">
+</div>
+
+<div id="status"></div>
+
+<script>
+  const SIZE = 18;
+  const COLORS = ["white", "green", "yellow", "red"];
+  const COLOR_HEX = {
+    white: "#ffffff",
+    green: "#2ecc71",
+    yellow: "#f1c40f",
+    red: "#e74c3c"
+  };
+
+  const grid = document.getElementById("grid");
+  const statusEl = document.getElementById("status");
+  const tooltip = document.getElementById("tooltip");
+
+  // state[row][col] = current color index (0 = white by default)
+  const state = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+
+  function cellName(row, col) {
+    const x = (col + 1) * 10;
+    const y = (row + 1) * 10;
+    return `cell_${x}_${y}`;
+  }
+
+  function buildLabels() {
+    const colLabels = document.getElementById("col-labels");
+    const rowLabels = document.getElementById("row-labels");
+    colLabels.innerHTML = "";
+    rowLabels.innerHTML = "";
+
+    for (let col = 0; col < SIZE; col++) {
+      const label = document.createElement("div");
+      label.className = "axis-label";
+      label.textContent = (col + 1) * 10;
+      colLabels.appendChild(label);
+    }
+
+    for (let row = SIZE - 1; row >= 0; row--) {
+      const label = document.createElement("div");
+      label.className = "axis-label";
+      label.textContent = (row + 1) * 10;
+      rowLabels.appendChild(label);
+    }
+  }
+
+  function buildGrid() {
+    grid.innerHTML = "";
+    for (let row = SIZE - 1; row >= 0; row--) {
+      for (let col = 0; col < SIZE; col++) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        cell.dataset.row = row;
+        cell.dataset.col = col;
+        cell.style.background = COLOR_HEX[COLORS[state[row][col]]];
+        cell.addEventListener("click", () => onCellClick(row, col, cell));
+        cell.addEventListener("mouseenter", () => showTooltip(row, col));
+        cell.addEventListener("mousemove", moveTooltip);
+        cell.addEventListener("mouseleave", hideTooltip);
+        grid.appendChild(cell);
+      }
+    }
+  }
+
+  function showTooltip(row, col) {
+    tooltip.textContent = cellName(row, col);
+    tooltip.style.display = "block";
+  }
+
+  function moveTooltip(event) {
+    tooltip.style.left = (event.clientX + 12) + "px";
+    tooltip.style.top = (event.clientY + 12) + "px";
+  }
+
+  function hideTooltip() {
+    tooltip.style.display = "none";
+  }
+
+  function onCellClick(row, col, cellEl) {
+    state[row][col] = (state[row][col] + 1) % COLORS.length;
+    cellEl.style.background = COLOR_HEX[COLORS[state[row][col]]];
+  }
+
+  function resetGrid() {
+    for (let row = 0; row < SIZE; row++) {
+      for (let col = 0; col < SIZE; col++) {
+        state[row][col] = 0;
+      }
+    }
+    buildGrid();
+    statusEl.textContent = "";
+  }
+
+  function exportDat() {
+    // Collect cells by color, row = Y, col = X (1-indexed, then multiplied by 10)
+    const buckets = { white: [], green: [], yellow: [], red: [] };
+
+    for (let row = 0; row < SIZE; row++) {
+      for (let col = 0; col < SIZE; col++) {
+        const colorName = COLORS[state[row][col]];
+        buckets[colorName].push(cellName(row, col));
+      }
+    }
+
+    let content = "";
+    for (const colorName of COLORS) {
+      content += `# ${colorName.toUpperCase()}\n`;
+      if (buckets[colorName].length === 0) {
+        content += "(no cells)\n";
+      } else {
+        content += buckets[colorName].join("\n") + "\n";
+      }
+      content += "\n";
+    }
+
+    const blob = new Blob([content], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "grid_cells.dat";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    statusEl.textContent = ".dat file downloaded.";
+  }
+
+  function importDat(text) {
+    // Preliminary reset: all cells go back to white
+    for (let row = 0; row < SIZE; row++) {
+      for (let col = 0; col < SIZE; col++) {
+        state[row][col] = 0;
+      }
+    }
+
+    let currentColorIndex = null;
+    const lines = text.split(/\r?\n/);
+
+    for (const rawLine of lines) {
+      const line = rawLine.trim();
+      if (line === "") continue;
+
+      // Header line like "# GREEN"
+      const headerMatch = line.match(/^#\s*(\w+)/);
+      if (headerMatch) {
+        const colorName = headerMatch[1].toLowerCase();
+        const idx = COLORS.indexOf(colorName);
+        currentColorIndex = idx >= 0 ? idx : null;
+        continue;
+      }
+
+      // Cell line like "cell_10_20"
+      const cellMatch = line.match(/^cell_(\d+)_(\d+)$/);
+      if (cellMatch && currentColorIndex !== null) {
+        const x = parseInt(cellMatch[1], 10);
+        const y = parseInt(cellMatch[2], 10);
+        const col = x / 10 - 1;
+        const row = y / 10 - 1;
+        if (row >= 0 && row < SIZE && col >= 0 && col < SIZE) {
+          state[row][col] = currentColorIndex;
+        }
+      }
+    }
+
+    buildGrid();
+    statusEl.textContent = ".dat file loaded successfully.";
+  }
+
+  document.getElementById("resetBtn").addEventListener("click", resetGrid);
+  document.getElementById("exportBtn").addEventListener("click", exportDat);
+
+  document.getElementById("importBtn").addEventListener("click", () => {
+    document.getElementById("fileInput").click();
+  });
+
+  document.getElementById("fileInput").addEventListener("change", (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => importDat(e.target.result);
+    reader.onerror = () => {
+      statusEl.textContent = "Error while reading the file.";
+    };
+    reader.readAsText(file);
+    // reset the input so the same file can be reloaded again
+    event.target.value = "";
+  });
+
+  buildLabels();
+  buildGrid();
+</script>
+
+</body>
+</html>
