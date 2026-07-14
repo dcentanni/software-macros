@@ -126,8 +126,11 @@
     margin-top: 16px;
     display: flex;
     gap: 16px;
+    flex-wrap: wrap;
+    justify-content: center;
     font-size: 13px;
     color: #ccc;
+    max-width: 560px;
   }
   .legend-item {
     display: flex;
@@ -139,6 +142,74 @@
     height: 14px;
     border: 1px solid #555;
     display: inline-block;
+  }
+  #palette-panel {
+    margin-top: 24px;
+    background: #262626;
+    border: 1px solid #444;
+    border-radius: 8px;
+    padding: 14px 16px;
+    width: 100%;
+    max-width: 560px;
+    box-sizing: border-box;
+  }
+  #palette-panel h2 {
+    font-size: 14px;
+    margin: 0 0 10px 0;
+    color: #ddd;
+  }
+  #palette-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .palette-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .palette-row input[type="color"] {
+    width: 32px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid #555;
+    border-radius: 4px;
+    background: none;
+    cursor: pointer;
+  }
+  .palette-row input[type="text"] {
+    flex: 1;
+    background: #1c1c1c;
+    color: #f0f0f0;
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 5px 8px;
+    font-size: 13px;
+  }
+  .palette-row .remove-color {
+    background: #4a2626;
+    color: #f0a0a0;
+    border: 1px solid #6a3333;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+  .palette-row .remove-color:hover {
+    background: #5a2c2c;
+  }
+  .palette-row .remove-color:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  #paletteBtns {
+    display: flex;
+    gap: 10px;
+  }
+  #paletteBtns button {
+    font-size: 13px;
+    padding: 6px 12px;
   }
   #status {
     margin-top: 10px;
@@ -174,8 +245,8 @@
 
 <h1>18x18 Grid</h1>
 <p class="info">
-  Click a cell to change its color. Each click follows the cycle:
-  white → green → yellow → red → white. Hover over a cell to see its name.
+  Click a cell to cycle through the active color palette. Hover over a cell to see its name.
+  Use the panel below the grid to add, remove, rename or recolor the palette entries.
 </p>
 
 <div id="grid-wrapper">
@@ -187,11 +258,14 @@
 
 <div id="tooltip"></div>
 
-<div id="legend">
-  <div class="legend-item"><span class="swatch" style="background:var(--white)"></span> White</div>
-  <div class="legend-item"><span class="swatch" style="background:var(--green)"></span> Green</div>
-  <div class="legend-item"><span class="swatch" style="background:var(--yellow)"></span> Yellow</div>
-  <div class="legend-item"><span class="swatch" style="background:var(--red)"></span> Red</div>
+<div id="legend"></div>
+
+<div id="palette-panel">
+  <h2>Color palette</h2>
+  <div id="palette-list"></div>
+  <div id="paletteBtns">
+    <button id="addColorBtn">+ Add color</button>
+  </div>
 </div>
 
 <div id="controls">
@@ -206,19 +280,27 @@
 
 <script>
   const SIZE = 18;
-  const COLORS = ["white", "green", "yellow", "red"];
-  const COLOR_HEX = {
-    white: "#ffffff",
-    green: "#2ecc71",
-    yellow: "#f1c40f",
-    red: "#e74c3c"
-  };
+  const MIN_COLORS = 2;
+  const MAX_COLORS = 12;
+
+  // Each entry: { name, hex }. Index 0 is the "default" color (used on reset).
+  let PALETTE = [
+    { name: "White", hex: "#ffffff" },
+    { name: "Green", hex: "#2ecc71" },
+    { name: "Yellow", hex: "#f1c40f" },
+    { name: "Red", hex: "#e74c3c" }
+  ];
+
+  const NEW_COLOR_SUGGESTIONS = [
+    "#3498db", "#9b59b6", "#1abc9c", "#e67e22",
+    "#34495e", "#ff6b81", "#2ecc71", "#f39c12"
+  ];
 
   const grid = document.getElementById("grid");
   const statusEl = document.getElementById("status");
   const tooltip = document.getElementById("tooltip");
 
-  // state[row][col] = current color index (0 = white by default)
+  // state[row][col] = current color index (0 = default color)
   const state = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
 
   function cellName(row, col) {
@@ -226,6 +308,110 @@
     const y = (row + 1) * 10;
     return `${x}_${y}`;
   }
+
+  function renderLegend() {
+    const legendEl = document.getElementById("legend");
+    legendEl.innerHTML = "";
+    PALETTE.forEach((color) => {
+      const item = document.createElement("div");
+      item.className = "legend-item";
+      const swatch = document.createElement("span");
+      swatch.className = "swatch";
+      swatch.style.background = color.hex;
+      item.appendChild(swatch);
+      item.appendChild(document.createTextNode(color.name || "(unnamed)"));
+      legendEl.appendChild(item);
+    });
+  }
+
+  function renderPaletteEditor() {
+    const listEl = document.getElementById("palette-list");
+    listEl.innerHTML = "";
+
+    PALETTE.forEach((color, index) => {
+      const row = document.createElement("div");
+      row.className = "palette-row";
+
+      const colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.value = color.hex;
+      colorInput.addEventListener("input", () => {
+        PALETTE[index].hex = colorInput.value;
+        refreshColors();
+      });
+
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.value = color.name;
+      nameInput.maxLength = 20;
+      nameInput.addEventListener("input", () => {
+        PALETTE[index].name = nameInput.value;
+        renderLegend();
+      });
+
+      const removeBtn = document.createElement("button");
+      removeBtn.className = "remove-color";
+      removeBtn.textContent = "✕";
+      removeBtn.title = "Remove this color";
+      removeBtn.disabled = PALETTE.length <= MIN_COLORS;
+      removeBtn.addEventListener("click", () => removeColor(index));
+
+      row.appendChild(colorInput);
+      row.appendChild(nameInput);
+      row.appendChild(removeBtn);
+      listEl.appendChild(row);
+    });
+
+    document.getElementById("addColorBtn").disabled = PALETTE.length >= MAX_COLORS;
+  }
+
+  function refreshColors() {
+    // Re-applies current PALETTE colors to the grid and legend without touching state
+    renderLegend();
+    const cells = grid.querySelectorAll(".cell");
+    cells.forEach((cellEl) => {
+      const row = parseInt(cellEl.dataset.row, 10);
+      const col = parseInt(cellEl.dataset.col, 10);
+      cellEl.style.background = PALETTE[state[row][col]].hex;
+    });
+  }
+
+  function addColor() {
+    if (PALETTE.length >= MAX_COLORS) return;
+    const suggestion = NEW_COLOR_SUGGESTIONS[PALETTE.length % NEW_COLOR_SUGGESTIONS.length];
+    PALETTE.push({ name: `Color ${PALETTE.length + 1}`, hex: suggestion });
+    renderPaletteEditor();
+    renderLegend();
+  }
+
+  function removeColor(index) {
+    if (PALETTE.length <= MIN_COLORS) return;
+
+    // Any cell using the removed color falls back to the default color (index 0)
+    // Any cell using a color after the removed one shifts its index down by 1
+    let affected = 0;
+    for (let row = 0; row < SIZE; row++) {
+      for (let col = 0; col < SIZE; col++) {
+        if (state[row][col] === index) {
+          state[row][col] = 0;
+          affected++;
+        } else if (state[row][col] > index) {
+          state[row][col] -= 1;
+        }
+      }
+    }
+
+    PALETTE.splice(index, 1);
+    renderPaletteEditor();
+    renderLegend();
+    buildGrid();
+
+    statusEl.textContent = affected > 0
+      ? `Color removed. ${affected} cell(s) reset to "${PALETTE[0].name}".`
+      : "Color removed.";
+  }
+
+  document.getElementById("addColorBtn").addEventListener("click", addColor);
 
   function buildLabels() {
     const colLabels = document.getElementById("col-labels");
@@ -256,7 +442,7 @@
         cell.className = "cell";
         cell.dataset.row = row;
         cell.dataset.col = col;
-        cell.style.background = COLOR_HEX[COLORS[state[row][col]]];
+        cell.style.background = PALETTE[state[row][col]].hex;
         cell.addEventListener("click", () => onCellClick(row, col, cell));
         cell.addEventListener("mouseenter", () => showTooltip(row, col));
         cell.addEventListener("mousemove", moveTooltip);
@@ -281,8 +467,8 @@
   }
 
   function onCellClick(row, col, cellEl) {
-    state[row][col] = (state[row][col] + 1) % COLORS.length;
-    cellEl.style.background = COLOR_HEX[COLORS[state[row][col]]];
+    state[row][col] = (state[row][col] + 1) % PALETTE.length;
+    cellEl.style.background = PALETTE[state[row][col]].hex;
   }
 
   function resetGrid() {
@@ -298,25 +484,25 @@
 
   function exportDat() {
     // Collect cells by color, row = Y, col = X (1-indexed, then multiplied by 10)
-    const buckets = { white: [], green: [], yellow: [], red: [] };
+    const buckets = PALETTE.map(() => []);
 
     for (let row = 0; row < SIZE; row++) {
       for (let col = 0; col < SIZE; col++) {
-        const colorName = COLORS[state[row][col]];
-        buckets[colorName].push(cellName(row, col));
+        buckets[state[row][col]].push(cellName(row, col));
       }
     }
 
     let content = "";
-    for (const colorName of COLORS) {
-      content += `# ${colorName.toUpperCase()}\n`;
-      if (buckets[colorName].length === 0) {
+    PALETTE.forEach((color, index) => {
+      const label = (color.name || `Color ${index + 1}`).trim().toUpperCase();
+      content += `# ${label}\n`;
+      if (buckets[index].length === 0) {
         content += "(no cells)\n";
       } else {
-        content += buckets[colorName].join("\n") + "\n";
+        content += buckets[index].join("\n") + "\n";
       }
       content += "\n";
-    }
+    });
 
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
@@ -368,17 +554,17 @@
       if (line.startsWith("(")) return; // e.g. "(no cells)" placeholder, ignore silently
 
       // Header line like "# GREEN"
-      const headerMatch = line.match(/^#\s*(\w+)/);
+      const headerMatch = line.match(/^#\s*(.+)/);
       if (headerMatch) {
-        const colorName = headerMatch[1].toLowerCase();
-        const idx = COLORS.indexOf(colorName);
+        const headerLabel = headerMatch[1].trim().toLowerCase();
+        const idx = PALETTE.findIndex((c) => (c.name || "").trim().toLowerCase() === headerLabel);
         if (idx >= 0) {
           currentColorIndex = idx;
-          currentColorRaw = colorName;
+          currentColorRaw = PALETTE[idx].name;
         } else {
           currentColorIndex = null;
           currentColorRaw = null;
-          warnings.push(`Line ${lineNum}: unrecognized color header "${rawLine.trim()}"`);
+          warnings.push(`Line ${lineNum}: unrecognized color header "${rawLine.trim()}" (not in the current palette)`);
         }
         return;
       }
@@ -441,6 +627,8 @@
   });
 
   buildLabels();
+  renderLegend();
+  renderPaletteEditor();
   buildGrid();
 </script>
 
