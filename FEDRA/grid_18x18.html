@@ -137,6 +137,10 @@
     align-items: center;
     gap: 6px;
   }
+  .legend-count {
+    color: #888;
+    font-variant-numeric: tabular-nums;
+  }
   .swatch {
     width: 14px;
     height: 14px;
@@ -309,17 +313,32 @@
     return `${x}_${y}`;
   }
 
+  function countCells() {
+    const counts = PALETTE.map(() => 0);
+    for (let row = 0; row < SIZE; row++) {
+      for (let col = 0; col < SIZE; col++) {
+        counts[state[row][col]]++;
+      }
+    }
+    return counts;
+  }
+
   function renderLegend() {
     const legendEl = document.getElementById("legend");
     legendEl.innerHTML = "";
-    PALETTE.forEach((color) => {
+    const counts = countCells();
+    PALETTE.forEach((color, index) => {
       const item = document.createElement("div");
       item.className = "legend-item";
       const swatch = document.createElement("span");
       swatch.className = "swatch";
       swatch.style.background = color.hex;
+      const countSpan = document.createElement("span");
+      countSpan.className = "legend-count";
+      countSpan.textContent = `(${counts[index]})`;
       item.appendChild(swatch);
       item.appendChild(document.createTextNode(color.name || "(unnamed)"));
+      item.appendChild(countSpan);
       legendEl.appendChild(item);
     });
   }
@@ -469,6 +488,7 @@
   function onCellClick(row, col, cellEl) {
     state[row][col] = (state[row][col] + 1) % PALETTE.length;
     cellEl.style.background = PALETTE[state[row][col]].hex;
+    renderLegend();
   }
 
   function resetGrid() {
@@ -480,6 +500,7 @@
     buildGrid();
     statusEl.textContent = "";
     logWarnings([]);
+    renderLegend();
   }
 
   function exportDat() {
@@ -601,6 +622,7 @@
 
     buildGrid();
     logWarnings(warnings);
+    renderLegend();
     statusEl.textContent = warnings.length === 0
       ? ".dat file loaded successfully."
       : `.dat file loaded with ${warnings.length} issue(s), see log below.`;
