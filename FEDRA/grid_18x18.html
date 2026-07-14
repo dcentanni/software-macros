@@ -146,6 +146,28 @@
     color: #8fdc8f;
     min-height: 18px;
   }
+  #log {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #e8a35c;
+    max-width: 500px;
+    max-height: 140px;
+    overflow-y: auto;
+    text-align: left;
+    background: #262626;
+    border: 1px solid #444;
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: none;
+  }
+  #log div {
+    margin-bottom: 2px;
+  }
+  #log .log-title {
+    color: #ccc;
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
 </style>
 </head>
 <body>
@@ -180,6 +202,7 @@
 </div>
 
 <div id="status"></div>
+<div id="log"></div>
 
 <script>
   const SIZE = 18;
@@ -201,7 +224,7 @@
   function cellName(row, col) {
     const x = (col + 1) * 10;
     const y = (row + 1) * 10;
-    return `cell_${x}_${y}`;
+    return `${x}_${y}`;
   }
 
   function buildLabels() {
@@ -270,6 +293,7 @@
     }
     buildGrid();
     statusEl.textContent = "";
+    logWarnings([]);
   }
 
   function exportDat() {
@@ -307,6 +331,22 @@
     statusEl.textContent = ".dat file downloaded.";
   }
 
+  function logWarnings(warnings) {
+    const logEl = document.getElementById("log");
+    if (warnings.length === 0) {
+      logEl.style.display = "none";
+      logEl.innerHTML = "";
+      return;
+    }
+    logEl.style.display = "block";
+    logEl.innerHTML = `<div class="log-title">${warnings.length} issue(s) found while loading:</div>`;
+    for (const w of warnings) {
+      const line = document.createElement("div");
+      line.textContent = "• " + w;
+      logEl.appendChild(line);
+    }
+  }
+
   function importDat(text) {
     // Preliminary reset: all cells go back to white
     for (let row = 0; row < SIZE; row++) {
@@ -315,37 +355,69 @@
       }
     }
 
+    const warnings = [];
+    const seenCells = {}; // cellName -> colorName, to detect duplicates
     let currentColorIndex = null;
+    let currentColorRaw = null;
     const lines = text.split(/\r?\n/);
 
-    for (const rawLine of lines) {
+    lines.forEach((rawLine, i) => {
+      const lineNum = i + 1;
       const line = rawLine.trim();
-      if (line === "") continue;
+      if (line === "") return;
+      if (line.startsWith("(")) return; // e.g. "(no cells)" placeholder, ignore silently
 
       // Header line like "# GREEN"
       const headerMatch = line.match(/^#\s*(\w+)/);
       if (headerMatch) {
         const colorName = headerMatch[1].toLowerCase();
         const idx = COLORS.indexOf(colorName);
-        currentColorIndex = idx >= 0 ? idx : null;
-        continue;
+        if (idx >= 0) {
+          currentColorIndex = idx;
+          currentColorRaw = colorName;
+        } else {
+          currentColorIndex = null;
+          currentColorRaw = null;
+          warnings.push(`Line ${lineNum}: unrecognized color header "${rawLine.trim()}"`);
+        }
+        return;
       }
 
-      // Cell line like "cell_10_20"
-      const cellMatch = line.match(/^cell_(\d+)_(\d+)$/);
-      if (cellMatch && currentColorIndex !== null) {
-        const x = parseInt(cellMatch[1], 10);
-        const y = parseInt(cellMatch[2], 10);
-        const col = x / 10 - 1;
-        const row = y / 10 - 1;
-        if (row >= 0 && row < SIZE && col >= 0 && col < SIZE) {
-          state[row][col] = currentColorIndex;
-        }
+      // Cell line like "10_20"
+      const cellMatch = line.match(/^(\d+)_(\d+)$/);
+      if (!cellMatch) {
+        warnings.push(`Line ${lineNum}: unrecognized line "${rawLine.trim()}"`);
+        return;
       }
-    }
+
+      if (currentColorIndex === null) {
+        warnings.push(`Line ${lineNum}: cell "${line}" found before a valid color header, skipped`);
+        return;
+      }
+
+      const x = parseInt(cellMatch[1], 10);
+      const y = parseInt(cellMatch[2], 10);
+      const col = x / 10 - 1;
+      const row = y / 10 - 1;
+
+      if (!Number.isInteger(col) || !Number.isInteger(row) || row < 0 || row >= SIZE || col < 0 || col >= SIZE) {
+        warnings.push(`Line ${lineNum}: cell "${line}" is out of the 18x18 grid range, skipped`);
+        return;
+      }
+
+      if (seenCells[line] && seenCells[line] !== currentColorRaw) {
+        warnings.push(`Line ${lineNum}: cell "${line}" was already set as ${seenCells[line]}, now overwritten as ${currentColorRaw}`);
+      }
+      seenCells[line] = currentColorRaw;
+
+      state[row][col] = currentColorIndex;
+    });
 
     buildGrid();
-    statusEl.textContent = ".dat file loaded successfully.";
+    logWarnings(warnings);
+    statusEl.textContent = warnings.length === 0
+      ? ".dat file loaded successfully."
+      : `.dat file loaded with ${warnings.length} issue(s), see log below.`;
   }
 
   document.getElementById("resetBtn").addEventListener("click", resetGrid);
