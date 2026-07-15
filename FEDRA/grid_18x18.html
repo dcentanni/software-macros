@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>18x18 Grid</title>
+<title>SND@LHC Brick Repair tool</title>
 <style>
   :root {
     --white: #ffffff;
@@ -369,6 +369,11 @@
     color: #888;
     margin-top: 4px;
   }
+  .relax-section-title {
+    font-size: 13px;
+    color: #ddd;
+    margin: 14px 0 4px 0;
+  }
 
   /* Full-screen scene container inside #relax-bg */
   .relax-scene-full {
@@ -449,7 +454,7 @@
 
 <div id="main">
 
-<h1>18x18 Grid</h1>
+<h1>SND@LHC Brick Repair tool</h1>
 <p class="info">
   Click a cell to cycle through the active color palette. Hover over a cell to see its name.
   Use the panel below the grid to add, remove, rename or recolor the palette entries.
@@ -502,6 +507,12 @@
     <span class="relax-swatch" style="background:#1a2e2a"></span> Floating bubbles
   </button>
   <div class="relax-note">Pick one to set it as the page background while you work.</div>
+
+  <div class="relax-section-title">Ambient music</div>
+  <button class="relax-option" id="musicToggleBtn">
+    <span class="relax-swatch" style="background:#555"></span> 🎵 Play music
+  </button>
+  <div class="relax-note">Generative, royalty-free ambient sound — starts on click.</div>
 </div>
 
 <button id="showRelaxBtn" title="Show relaxing background panel">🌿 Backgrounds</button>
@@ -739,8 +750,8 @@
 
     let content = "";
     PALETTE.forEach((color, index) => {
-      const label = (color.name || `Color ${index + 1}`).trim().toUpperCase();
-      content += `# ${label}\n`;
+      const label = (color.name || `Color ${index + 1}`).trim();
+      content += `# ${label} ${color.hex}\n`;
       if (buckets[index].length === 0) {
         content += "(no cells)\n";
       } else {
@@ -779,13 +790,9 @@
   }
 
   function importDat(text) {
-    // Preliminary reset: all cells go back to white
-    for (let row = 0; row < SIZE; row++) {
-      for (let col = 0; col < SIZE; col++) {
-        state[row][col] = 0;
-      }
-    }
-
+    const newPalette = []; // { name, hex }, built fresh from the file
+    const nameToIndex = {}; // lowercase name -> index in newPalette
+    const newState = Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
     const warnings = [];
     const seenCells = {}; // cellName -> colorName, to detect duplicates
     let currentColorIndex = null;
@@ -798,19 +805,27 @@
       if (line === "") return;
       if (line.startsWith("(")) return; // e.g. "(no cells)" placeholder, ignore silently
 
-      // Header line like "# GREEN"
-      const headerMatch = line.match(/^#\s*(.+)/);
-      if (headerMatch) {
-        const headerLabel = headerMatch[1].trim().toLowerCase();
-        const idx = PALETTE.findIndex((c) => (c.name || "").trim().toLowerCase() === headerLabel);
-        if (idx >= 0) {
-          currentColorIndex = idx;
-          currentColorRaw = PALETTE[idx].name;
+      // Header with color code, current format: "# NAME #RRGGBB"
+      const headerWithHex = line.match(/^#\s*(.+?)\s+(#[0-9a-fA-F]{3,8})\s*$/);
+      // Header without color code, legacy format: "# NAME"
+      const headerLegacy = !headerWithHex && line.match(/^#\s*(.+)/);
+
+      if (headerWithHex || headerLegacy) {
+        const name = (headerWithHex ? headerWithHex[1] : headerLegacy[1]).trim();
+        const key = name.toLowerCase();
+
+        if (nameToIndex.hasOwnProperty(key)) {
+          currentColorIndex = nameToIndex[key];
         } else {
-          currentColorIndex = null;
-          currentColorRaw = null;
-          warnings.push(`Line ${lineNum}: unrecognized color header "${rawLine.trim()}" (not in the current palette)`);
+          const hex = headerWithHex ? headerWithHex[2].trim() : "#999999";
+          if (!headerWithHex) {
+            warnings.push(`Line ${lineNum}: color header "${rawLine.trim()}" has no color code, using a default gray`);
+          }
+          currentColorIndex = newPalette.length;
+          nameToIndex[key] = currentColorIndex;
+          newPalette.push({ name, hex });
         }
+        currentColorRaw = name;
         return;
       }
 
@@ -841,8 +856,31 @@
       }
       seenCells[line] = currentColorRaw;
 
-      state[row][col] = currentColorIndex;
+      newState[row][col] = currentColorIndex;
     });
+
+    let finalPalette = newPalette;
+    if (finalPalette.length > MAX_COLORS) {
+      warnings.push(`The file defines ${finalPalette.length} colors, but only the first ${MAX_COLORS} are supported; the rest were ignored.`);
+      finalPalette = finalPalette.slice(0, MAX_COLORS);
+      for (let row = 0; row < SIZE; row++) {
+        for (let col = 0; col < SIZE; col++) {
+          if (newState[row][col] >= MAX_COLORS) newState[row][col] = 0;
+        }
+      }
+    }
+
+    if (finalPalette.length < MIN_COLORS) {
+      warnings.push(`The file only defines ${finalPalette.length} usable color(s); at least ${MIN_COLORS} are required, so the palette and grid were left unchanged.`);
+    } else {
+      PALETTE = finalPalette;
+      for (let row = 0; row < SIZE; row++) {
+        for (let col = 0; col < SIZE; col++) {
+          state[row][col] = newState[row][col];
+        }
+      }
+      renderPaletteEditor();
+    }
 
     buildGrid();
     logWarnings(warnings);
@@ -937,6 +975,133 @@
       btn.classList.toggle("active", btn.dataset.scene === type);
     });
   }
+
+  /* ---------- Ambient generative music ---------- */
+  let audioCtx = null;
+  let masterGain = null;
+  let delayNode = null;
+  let musicStarted = false;
+  let musicPlaying = false;
+  let noteTimeoutId = null;
+
+  // C major pentatonic scale across two octaves — sparse, calm, non-repeating
+  const SCALE = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 784.00];
+
+  function ensureAudioContext() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.0001;
+      masterGain.connect(audioCtx.destination);
+
+      delayNode = audioCtx.createDelay(2.0);
+      delayNode.delayTime.value = 0.55;
+      const feedback = audioCtx.createGain();
+      feedback.gain.value = 0.28;
+      const delayFilter = audioCtx.createBiquadFilter();
+      delayFilter.type = "lowpass";
+      delayFilter.frequency.value = 2000;
+      delayNode.connect(delayFilter);
+      delayFilter.connect(feedback);
+      feedback.connect(delayNode);
+      delayNode.connect(masterGain);
+    }
+  }
+
+  function startPad() {
+    const padGain = audioCtx.createGain();
+    padGain.gain.value = 0.06;
+
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 700;
+
+    const osc1 = audioCtx.createOscillator();
+    osc1.type = "sine";
+    osc1.frequency.value = 110; // A2
+
+    const osc2 = audioCtx.createOscillator();
+    osc2.type = "sine";
+    osc2.frequency.value = 110 * 1.5; // perfect fifth
+
+    osc1.connect(filter);
+    osc2.connect(filter);
+    filter.connect(padGain);
+    padGain.connect(masterGain);
+
+    const lfo = audioCtx.createOscillator();
+    lfo.frequency.value = 0.05;
+    const lfoGain = audioCtx.createGain();
+    lfoGain.gain.value = 250;
+    lfo.connect(lfoGain);
+    lfoGain.connect(filter.frequency);
+
+    osc1.start();
+    osc2.start();
+    lfo.start();
+  }
+
+  function playNote() {
+    if (!musicPlaying) return;
+
+    const freq = SCALE[Math.floor(Math.random() * SCALE.length)];
+    const now = audioCtx.currentTime;
+    const duration = 2.5 + Math.random() * 2;
+
+    const osc = audioCtx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.value = freq;
+
+    const noteGain = audioCtx.createGain();
+    noteGain.gain.setValueAtTime(0, now);
+    noteGain.gain.linearRampToValueAtTime(0.12, now + 0.08);
+    noteGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+    osc.connect(noteGain);
+    noteGain.connect(masterGain);
+    noteGain.connect(delayNode);
+
+    osc.start(now);
+    osc.stop(now + duration + 0.2);
+
+    const nextDelay = 1400 + Math.random() * 2200;
+    noteTimeoutId = setTimeout(playNote, nextDelay);
+  }
+
+  function toggleMusic() {
+    ensureAudioContext();
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+
+    const btn = document.getElementById("musicToggleBtn");
+
+    if (!musicStarted) {
+      musicStarted = true;
+      startPad();
+    }
+
+    musicPlaying = !musicPlaying;
+
+    if (musicPlaying) {
+      masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      masterGain.gain.linearRampToValueAtTime(0.22, audioCtx.currentTime + 1.2);
+      btn.innerHTML = '<span class="relax-swatch" style="background:#6fb8e0"></span> 🔇 Mute music';
+      btn.classList.add("active");
+      playNote();
+    } else {
+      masterGain.gain.cancelScheduledValues(audioCtx.currentTime);
+      masterGain.gain.linearRampToValueAtTime(0.0001, audioCtx.currentTime + 1);
+      btn.innerHTML = '<span class="relax-swatch" style="background:#555"></span> 🎵 Play music';
+      btn.classList.remove("active");
+      if (noteTimeoutId) {
+        clearTimeout(noteTimeoutId);
+        noteTimeoutId = null;
+      }
+    }
+  }
+
+  document.getElementById("musicToggleBtn").addEventListener("click", toggleMusic);
 
   function hideRelaxPanel() {
     document.getElementById("relax-sidebar").style.display = "none";
